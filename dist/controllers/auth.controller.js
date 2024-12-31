@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAuthUserHandler = exports.loginHandler = void 0;
+exports.logoutHandler = exports.getAuthUserHandler = exports.loginHandler = void 0;
 const __1 = require("..");
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
@@ -102,3 +102,38 @@ const getAuthUserHandler = (req, res) => __awaiter(void 0, void 0, void 0, funct
     }
 });
 exports.getAuthUserHandler = getAuthUserHandler;
+const logoutHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        // to logout user needs to be loggedi n
+        const userId = req.userId;
+        if (!userId) {
+            res.status(401).json({
+                "success": false,
+                "message": "authenticated user id not found"
+            });
+            return;
+        }
+        const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            res.status(400).json({
+                "success": false,
+                "message": "invalid user id"
+            });
+            return;
+        }
+        res.clearCookie("auth_token", {
+            httpOnly: true,
+            path: "/",
+            maxAge: 0,
+            sameSite: process.env.NODE_ENV === "production" ? "none" : 'lax',
+            secure: process.env.NODE_ENV === "production"
+        }).status(200).json({
+            "success": true,
+            "message": "user logged out successfully"
+        });
+    }
+    catch (error) {
+        console.log(error);
+    }
+});
+exports.logoutHandler = logoutHandler;

@@ -100,8 +100,43 @@ const getAuthUserHandler = async (req:Request,res:Response) => {
     }
 }
 
+const logoutHandler = async (req:Request,res:Response) => {
+    try {
+            // to logout user needs to be loggedi n
+    const userId = req.userId;
+    if(!userId) {
+        res.status(401).json({
+            "success":false,
+            "message":"authenticated user id not found"
+        });
+        return;
+    }
+    const user = await prisma.user.findUnique({where:{id:userId}});
+    if(!user) {
+        res.status(400).json({
+            "success":false,
+            "message":"invalid user id"
+        })
+        return;
+    }
+
+    res.clearCookie("auth_token",{
+        httpOnly:true,
+        path:"/",
+        maxAge:0,
+        sameSite:process.env.NODE_ENV==="production" ? "none" : 'lax',
+        secure:process.env.NODE_ENV==="production"
+    }).status(200).json({
+        "success":true,
+        "message":"user logged out successfully"
+    });
+    } catch (error) {
+       console.log(error); 
+    }
+}
 
 export {
     loginHandler,
     getAuthUserHandler,
+    logoutHandler,
 }
