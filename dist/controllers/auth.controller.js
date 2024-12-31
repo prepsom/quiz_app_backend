@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.loginHandler = void 0;
+exports.getAuthUserHandler = exports.loginHandler = void 0;
 const __1 = require("..");
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
@@ -70,3 +70,35 @@ const loginHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* (
     }
 });
 exports.loginHandler = loginHandler;
+const getAuthUserHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const userId = req.userId;
+        if (!userId) {
+            res.status(401).json({
+                "success": false,
+                "message": "authenticated user id not found"
+            });
+            return;
+        }
+        const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            res.status(400).json({
+                "success": false,
+                "message": "invalid user id"
+            });
+            return;
+        }
+        res.status(200).json({
+            "success": true,
+            user,
+        });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({
+            "success": false,
+            "message": "internal server error when getting auth user"
+        });
+    }
+});
+exports.getAuthUserHandler = getAuthUserHandler;

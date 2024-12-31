@@ -67,6 +67,41 @@ const loginHandler = async (req:Request,res:Response) => {
     }   
 }
 
+
+const getAuthUserHandler = async (req:Request,res:Response) => {
+    try {
+        const userId = req.userId;
+        if(!userId) {
+            res.status(401).json({
+                "success":false,
+                "message":"authenticated user id not found"
+            });
+            return;
+        }
+        const user = await prisma.user.findUnique({where:{id:userId}});
+        if(!user) {
+            res.status(400).json({
+                "success":false,
+                "message":"invalid user id"
+            })
+            return;
+        }
+    
+        res.status(200).json({
+            "success":true,
+            user,
+        });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            "success":false,
+            "message":"internal server error when getting auth user"
+        });
+    }
+}
+
+
 export {
     loginHandler,
+    getAuthUserHandler,
 }

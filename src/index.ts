@@ -1,12 +1,12 @@
-import express, { Request, Response } from "express"
 import 'dotenv/config'
+import express, { Request, Response } from "express"
 import { PrismaClient } from "@prisma/client";
 import cookieParser from "cookie-parser";
 import cors from "cors"
 import { GRADES } from "./constants";
 import { dbInit, seedUsers } from "./utils/dbSeeder";
 import authRoutes from "./routes/auth.routes"
-
+import subjectRoutes from "./routes/subject.routes"
 
 const app = express();
 const port = process.env.PORT;
@@ -39,6 +39,7 @@ app.get("/test",async (req:Request,res:Response) => {
 });
 
 app.use("/auth",authRoutes);
+app.use("/subject",subjectRoutes);
 
 
 initialize().catch((e) => {
