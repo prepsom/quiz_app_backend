@@ -108,6 +108,13 @@ const addSubjectByGradeHandler = (req, res) => __awaiter(void 0, void 0, void 0,
         }
         // if role== teacher   , check if teacher teaches that grade they are trying to add a subject to
         const { gradeId, subjectName } = req.body;
+        if (subjectName.trim() === "") {
+            res.status(400).json({
+                "success": false,
+                "message": "subject name cannot be empty"
+            });
+            return;
+        }
         const grade = yield __1.prisma.grade.findUnique({ where: { id: gradeId } });
         if (!grade) {
             res.status(404).json({
@@ -213,6 +220,13 @@ const updateSubjectHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
             res.status(400).json({
                 "success": false,
                 "message": "invalid user id"
+            });
+            return;
+        }
+        if (newSubjectName.trim() === "") {
+            res.status(400).json({
+                "success": false,
+                "message": "subject name cannot be empty"
             });
             return;
         }

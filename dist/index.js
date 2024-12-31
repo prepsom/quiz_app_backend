@@ -21,6 +21,7 @@ const cors_1 = __importDefault(require("cors"));
 const dbSeeder_1 = require("./utils/dbSeeder");
 const auth_routes_1 = __importDefault(require("./routes/auth.routes"));
 const subject_routes_1 = __importDefault(require("./routes/subject.routes"));
+const level_routes_1 = __importDefault(require("./routes/level.routes"));
 const app = (0, express_1.default)();
 const port = process.env.PORT;
 // instantiating a new prisma client
@@ -50,6 +51,7 @@ app.get("/test", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
 }));
 app.use("/auth", auth_routes_1.default);
 app.use("/subject", subject_routes_1.default);
+app.use("/level", level_routes_1.default);
 initialize().catch((e) => {
     process.exit(1);
 });

@@ -117,6 +117,14 @@ const addSubjectByGradeHandler = async (req:Request,res:Response) => {
 
     const {gradeId,subjectName} = req.body as AddSubjectRequestBody
 
+    if(subjectName.trim()==="") {
+        res.status(400).json({
+            "success":false,
+            "message":"subject name cannot be empty"
+        })
+        return;
+    }
+
     const grade = await prisma.grade.findUnique({where:{id:gradeId}});
     if(!grade) {
         res.status(404).json({
@@ -235,7 +243,15 @@ const updateSubjectHandler = async (req:Request,res:Response) => {
             })
             return;
         }
-    
+
+        if(newSubjectName.trim()==="") {
+            res.status(400).json({
+                "success":false,
+                "message":"subject name cannot be empty"
+            })
+            return;
+        }
+
         const subject = await prisma.subject.findUnique({where:{id:subjectId}});
         if(!subject) {
             res.status(400).json({
