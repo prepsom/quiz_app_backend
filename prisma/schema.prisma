@@ -1,0 +1,106 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Grade {
+  id       String    @id @default(uuid())
+  grade    Int
+  Users    User[]
+  Subjects Subject[]
+}
+
+model User {
+  id                String             @id @default(uuid())
+  email             String             @unique
+  name              String?
+  password          String
+  role              Role               @default(STUDENT)
+  createdAt         DateTime           @default(now())
+  avatar            Avatar             @default(MALE)
+  grade             Grade              @relation(fields: [gradeId], references: [id],onDelete: Cascade)
+  gradeId           String
+  QuestionResponses QuestionResponse[]
+}
+
+model Subject {
+  id          String  @id @default(uuid())
+  subjectName String
+  grade       Grade   @relation(fields: [gradeId], references: [id],onDelete: Cascade)
+  gradeId     String
+  Levels      Level[]
+}
+
+model Level {
+  id               String     @id @default(uuid())
+  levelName        String
+  levelDescription String?
+  subject          Subject    @relation(fields: [subjectId], references: [id],onDelete: Cascade)
+  subjectId        String
+  Questions        Question[]
+}
+
+model Question {
+  id               String             @id @default(uuid())
+  questionTitle    String
+  questionHint     String?
+  difficulty       Difficulty         @default(EASY)
+  level            Level              @relation(fields: [levelId], references: [id],onDelete: Cascade)
+  levelId          String
+  Answers          Answer[] // possible answers (to show answer choices to the user) 
+  correctAnswer    Answer             @relation("correctAnswer", fields: [correctAnswerId], references: [id],onDelete: Cascade)
+  correctAnswerId  String             @unique
+  QuestionResponse QuestionResponse[]
+}
+
+model Answer {
+  id                 String             @id @default(uuid())
+  value              String
+  question           Question           @relation(fields: [questionId], references: [id],onDelete: Cascade)
+  questionId         String
+  correctForQuestion Question?          @relation("correctAnswer")
+  QuestionResponse   QuestionResponse[]
+}
+
+model QuestionResponse {
+  id             String   @id @default(uuid())
+  question       Question @relation(fields: [questionId], references: [id],onDelete: Cascade)
+  questionId     String
+  responder      User     @relation(fields: [responderId], references:[id],onDelete: Cascade)
+  responderId    String
+  chosenAnswer   Answer   @relation(fields: [chosenAnswerId], references: [id],onDelete: Cascade)
+  chosenAnswerId String
+  pointsEarned   Int
+  isCorrect      Boolean
+  responseTime   Int
+  createdAt      DateTime @default(now())
+
+  @@unique([responderId, questionId])
+}
+
+enum Role {
+  STUDENT
+  TEACHER
+  ADMIN
+}
+
+enum Avatar {
+  MALE
+  FEMALE
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
