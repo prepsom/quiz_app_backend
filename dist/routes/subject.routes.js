@@ -10,4 +10,5 @@ const router = express_1.default.Router();
 router.post("/", auth_middleware_1.authenticateUser, subject_controller_1.addSubjectByGradeHandler); // role = admin | teacher
 router.get("/:gradeId", auth_middleware_1.authenticateUser, subject_controller_1.getSubjectsByGradeHandler);
 router.delete("/:subjectId", auth_middleware_1.authenticateUser, subject_controller_1.deleteSubjectHandler);
+router.put("/:subjectId", auth_middleware_1.authenticateUser, subject_controller_1.updateSubjectHandler);
 exports.default = router;

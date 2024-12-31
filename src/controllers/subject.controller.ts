@@ -6,6 +6,9 @@ type AddSubjectRequestBody = {
     gradeId:string;
 }
 
+type UpdateSubjectRequestBody = {
+    newSubjectName:string;
+}
 
 const getSubjectsByGradeHandler = async (req:Request,res:Response) => {
     // get auth userid from middleware
@@ -30,11 +33,21 @@ const getSubjectsByGradeHandler = async (req:Request,res:Response) => {
             })
             return;
         }
+
+        const grade = await prisma.grade.findUnique({where:{id:gradeId}});
+        if(!grade)  {
+            res.status(400).json({
+                "success":false,
+                "message":"invalid grade id"
+            });
+            return;
+        }
+
         // endpoint to get subjects under a specific grade
         // if the user is a student and if belongs to the grade then show the subjects
         // if the user is a teacher and if teaches the grade then show the subjects
         if(user.role==="STUDENT") {
-            if(user.gradeId!==gradeId) {
+            if(user.gradeId!==grade.id) {
                 res.status(401).json({
                     "success":false,
                     "message":"user unauthorized to get subjects under this grade"
@@ -44,7 +57,7 @@ const getSubjectsByGradeHandler = async (req:Request,res:Response) => {
         }
 
         if(user.role==="TEACHER") {
-            const teachesGrade = await prisma.teacherGrade.findFirst({where:{teacherId:user.id,gradeId:gradeId}});
+            const teachesGrade = await prisma.teacherGrade.findFirst({where:{teacherId:user.id,gradeId:grade.id}});
             if(!teachesGrade) {
                 res.status(401).json({
                     "success":false,
@@ -54,7 +67,7 @@ const getSubjectsByGradeHandler = async (req:Request,res:Response) => {
             }
         }
 
-        const subjects = await prisma.subject.findMany({where:{gradeId:gradeId!}});
+        const subjects = await prisma.subject.findMany({where:{gradeId:grade.id}});
         
         res.status(200).json({
             "success":true,
@@ -138,10 +151,6 @@ const addSubjectByGradeHandler = async (req:Request,res:Response) => {
 
 const deleteSubjectHandler = async (req:Request,res:Response) => {
     try {
-    // get subject id to delete from params
-    // check if subject exists
-    // check user's role
-    // delete subject
     const {subjectId} = req.params as {subjectId:string};
     const userId = req.userId;
     
@@ -204,8 +213,77 @@ const deleteSubjectHandler = async (req:Request,res:Response) => {
     }
 }
 
+
+const updateSubjectHandler = async (req:Request,res:Response) => {
+    try {
+        const userId = req.userId;
+        const {subjectId} = req.params as {subjectId:string};
+        const {newSubjectName} = req.body as UpdateSubjectRequestBody;
+        if(!userId)  {
+            res.status(401).json({
+                "success":false,
+                "message":'authenticated user id not found'
+            })
+            return;
+        }
+        
+        const user = await prisma.user.findUnique({where:{id:userId}});
+        if(!user) {
+            res.status(400).json({
+                "success":false,
+                "message":"invalid user id"
+            })
+            return;
+        }
+    
+        const subject = await prisma.subject.findUnique({where:{id:subjectId}});
+        if(!subject) {
+            res.status(400).json({
+                "success":false,
+                "message":"subject not found"
+            });
+            return;
+        }
+    
+        // subject to update available 
+        if(user.role==="STUDENT") {
+            res.status(400).json({
+                "success":false,
+                "message":"student not authorized to update subject"
+            })
+            return;
+        }
+    
+        if(user.role==="TEACHER") {
+            // If teacher teaches the grade that the subject is in then it is ok if not then return err
+            const teachesGrade = await prisma.teacherGrade.findFirst({where:{teacherId:user.id,gradeId:subject.gradeId}});
+            if(!teachesGrade) {
+                res.status(401).json({
+                    "success":false,
+                    "message":"teacher not allowed to update subject of this grade"
+                });
+                return;
+            }
+        }
+    
+        const updatedSubject = await prisma.subject.update({where:{id:subject.id},data:{subjectName:newSubjectName.trim()}});
+        res.status(200).json({
+            "success":true,
+            "message":"subject updated successfully",
+            "subject":updatedSubject,
+        });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            "success":false,
+            "message":"Internal server error when updating subject"
+        });
+    }
+}
+
 export {
     getSubjectsByGradeHandler,
     addSubjectByGradeHandler,
     deleteSubjectHandler,
+    updateSubjectHandler,
 }

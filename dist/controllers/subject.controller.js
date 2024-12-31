@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteSubjectHandler = exports.addSubjectByGradeHandler = exports.getSubjectsByGradeHandler = void 0;
+exports.updateSubjectHandler = exports.deleteSubjectHandler = exports.addSubjectByGradeHandler = exports.getSubjectsByGradeHandler = void 0;
 const __1 = require("..");
 const getSubjectsByGradeHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     // get auth userid from middleware
@@ -34,11 +34,19 @@ const getSubjectsByGradeHandler = (req, res) => __awaiter(void 0, void 0, void 0
             });
             return;
         }
+        const grade = yield __1.prisma.grade.findUnique({ where: { id: gradeId } });
+        if (!grade) {
+            res.status(400).json({
+                "success": false,
+                "message": "invalid grade id"
+            });
+            return;
+        }
         // endpoint to get subjects under a specific grade
         // if the user is a student and if belongs to the grade then show the subjects
         // if the user is a teacher and if teaches the grade then show the subjects
         if (user.role === "STUDENT") {
-            if (user.gradeId !== gradeId) {
+            if (user.gradeId !== grade.id) {
                 res.status(401).json({
                     "success": false,
                     "message": "user unauthorized to get subjects under this grade"
@@ -47,7 +55,7 @@ const getSubjectsByGradeHandler = (req, res) => __awaiter(void 0, void 0, void 0
             }
         }
         if (user.role === "TEACHER") {
-            const teachesGrade = yield __1.prisma.teacherGrade.findFirst({ where: { teacherId: user.id, gradeId: gradeId } });
+            const teachesGrade = yield __1.prisma.teacherGrade.findFirst({ where: { teacherId: user.id, gradeId: grade.id } });
             if (!teachesGrade) {
                 res.status(401).json({
                     "success": false,
@@ -56,7 +64,7 @@ const getSubjectsByGradeHandler = (req, res) => __awaiter(void 0, void 0, void 0
                 return;
             }
         }
-        const subjects = yield __1.prisma.subject.findMany({ where: { gradeId: gradeId } });
+        const subjects = yield __1.prisma.subject.findMany({ where: { gradeId: grade.id } });
         res.status(200).json({
             "success": true,
             subjects,
@@ -133,10 +141,6 @@ const addSubjectByGradeHandler = (req, res) => __awaiter(void 0, void 0, void 0,
 exports.addSubjectByGradeHandler = addSubjectByGradeHandler;
 const deleteSubjectHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        // get subject id to delete from params
-        // check if subject exists
-        // check user's role
-        // delete subject
         const { subjectId } = req.params;
         const userId = req.userId;
         if (!userId) {
@@ -192,3 +196,66 @@ const deleteSubjectHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
     }
 });
 exports.deleteSubjectHandler = deleteSubjectHandler;
+const updateSubjectHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const userId = req.userId;
+        const { subjectId } = req.params;
+        const { newSubjectName } = req.body;
+        if (!userId) {
+            res.status(401).json({
+                "success": false,
+                "message": 'authenticated user id not found'
+            });
+            return;
+        }
+        const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            res.status(400).json({
+                "success": false,
+                "message": "invalid user id"
+            });
+            return;
+        }
+        const subject = yield __1.prisma.subject.findUnique({ where: { id: subjectId } });
+        if (!subject) {
+            res.status(400).json({
+                "success": false,
+                "message": "subject not found"
+            });
+            return;
+        }
+        // subject to update available 
+        if (user.role === "STUDENT") {
+            res.status(400).json({
+                "success": false,
+                "message": "student not authorized to update subject"
+            });
+            return;
+        }
+        if (user.role === "TEACHER") {
+            // If teacher teaches the grade that the subject is in then it is ok if not then return err
+            const teachesGrade = yield __1.prisma.teacherGrade.findFirst({ where: { teacherId: user.id, gradeId: subject.gradeId } });
+            if (!teachesGrade) {
+                res.status(401).json({
+                    "success": false,
+                    "message": "teacher not allowed to update subject of this grade"
+                });
+                return;
+            }
+        }
+        const updatedSubject = yield __1.prisma.subject.update({ where: { id: subject.id }, data: { subjectName: newSubjectName.trim() } });
+        res.status(200).json({
+            "success": true,
+            "message": "subject updated successfully",
+            "subject": updatedSubject,
+        });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({
+            "success": false,
+            "message": "Internal server error when updating subject"
+        });
+    }
+});
+exports.updateSubjectHandler = updateSubjectHandler;
