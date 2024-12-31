@@ -9,4 +9,5 @@ const subject_controller_1 = require("../controllers/subject.controller");
 const router = express_1.default.Router();
 router.post("/", auth_middleware_1.authenticateUser, subject_controller_1.addSubjectByGradeHandler); // role = admin | teacher
 router.get("/", auth_middleware_1.authenticateUser, subject_controller_1.getSubjectsByGradeHandler); // get subjects from whatever grade the authenticated user is in 
+router.delete("/:subjectId", auth_middleware_1.authenticateUser, subject_controller_1.deleteSubjectHandler);
 exports.default = router;

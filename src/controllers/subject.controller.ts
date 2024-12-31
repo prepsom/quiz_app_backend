@@ -94,7 +94,59 @@ const addSubjectByGradeHandler = async (req:Request,res:Response) => {
     }
 }
 
+const deleteSubjectHandler = async (req:Request,res:Response) => {
+    try {
+    // get subject id to delete from params
+    // check if subject exists
+    // check user's role
+    // delete subject
+    const {subjectId} = req.params as {subjectId:string};
+    const userId = req.userId;
+    if(!userId)  {
+        res.status(401).json({
+            "success":false,
+            "message":'authenticated user id not found'
+        })
+        return;
+    }
+    const user = await prisma.user.findUnique({where:{id:userId}});
+    if(!user) {
+        res.status(400).json({
+            "success":false,
+            "message":"invalid user id"
+        })
+        return;
+    }
+
+    if(user.role==="STUDENT") {
+        res.status(401).json({
+            "success":false,
+            "message":"user not authorized to delete subjects"
+        })
+        return;
+    }
+
+    const subject = await prisma.subject.findUnique({where:{id:subjectId}});
+    if(!subject) {
+        res.status(400).json({
+            "success":false,
+            "message":"subject not found"
+        });
+        return;
+    }
+
+    await prisma.subject.delete({where:{id:subject.id}});
+    res.status(200).json({
+        "success":true,
+        "message":"subject deleted successfully"
+    });
+    } catch (error) {
+        console.log(error); 
+    }
+}
+
 export {
     getSubjectsByGradeHandler,
     addSubjectByGradeHandler,
+    deleteSubjectHandler,
 }

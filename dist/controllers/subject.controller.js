@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.addSubjectByGradeHandler = exports.getSubjectsByGradeHandler = void 0;
+exports.deleteSubjectHandler = exports.addSubjectByGradeHandler = exports.getSubjectsByGradeHandler = void 0;
 const __1 = require("..");
 const getSubjectsByGradeHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     // get auth userid from middleware
@@ -96,3 +96,52 @@ const addSubjectByGradeHandler = (req, res) => __awaiter(void 0, void 0, void 0,
     }
 });
 exports.addSubjectByGradeHandler = addSubjectByGradeHandler;
+const deleteSubjectHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        // get subject id to delete from params
+        // check if subject exists
+        // check user's role
+        // delete subject
+        const { subjectId } = req.params;
+        const userId = req.userId;
+        if (!userId) {
+            res.status(401).json({
+                "success": false,
+                "message": 'authenticated user id not found'
+            });
+            return;
+        }
+        const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            res.status(400).json({
+                "success": false,
+                "message": "invalid user id"
+            });
+            return;
+        }
+        if (user.role === "STUDENT") {
+            res.status(401).json({
+                "success": false,
+                "message": "user not authorized to delete subjects"
+            });
+            return;
+        }
+        const subject = yield __1.prisma.subject.findUnique({ where: { id: subjectId } });
+        if (!subject) {
+            res.status(400).json({
+                "success": false,
+                "message": "subject not found"
+            });
+            return;
+        }
+        yield __1.prisma.subject.delete({ where: { id: subject.id } });
+        res.status(200).json({
+            "success": true,
+            "message": "subject deleted successfully"
+        });
+    }
+    catch (error) {
+        console.log(error);
+    }
+});
+exports.deleteSubjectHandler = deleteSubjectHandler;
