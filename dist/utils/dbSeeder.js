@@ -48,14 +48,32 @@ const seedUserInGrade = (gradeId, email, name, password, role, avatar) => __awai
     try {
         const salt = yield bcrypt_1.default.genSalt(10);
         const hashedPassword = yield bcrypt_1.default.hash(password, salt);
-        const newUser = yield __1.prisma.user.create({ data: {
-                email: email.trim().toLowerCase(),
-                gradeId: gradeId,
-                avatar: avatar,
-                role: role,
-                name: name,
-                password: hashedPassword,
-            } });
+        if (role === "STUDENT") {
+            yield __1.prisma.user.create({ data: {
+                    email: email.trim().toLowerCase(),
+                    gradeId: gradeId,
+                    avatar: avatar,
+                    role: role,
+                    name: name,
+                    password: hashedPassword,
+                } });
+        }
+        else if (role === "TEACHER") {
+            yield __1.prisma.user.create({
+                data: {
+                    email: email.trim().toLowerCase(),
+                    name,
+                    password: hashedPassword,
+                    role,
+                    avatar,
+                    teacherGrades: {
+                        create: {
+                            gradeId
+                        }
+                    }
+                }
+            });
+        }
         console.log('successfully seeded user in database');
     }
     catch (error) {

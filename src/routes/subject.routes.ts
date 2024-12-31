@@ -6,7 +6,7 @@ const router = express.Router();
 
 
 router.post("/",authenticateUser,addSubjectByGradeHandler); // role = admin | teacher
-router.get("/",authenticateUser,getSubjectsByGradeHandler); // get subjects from whatever grade the authenticated user is in 
+router.get("/:gradeId",authenticateUser,getSubjectsByGradeHandler); 
 router.delete("/:subjectId",authenticateUser,deleteSubjectHandler);
 
 

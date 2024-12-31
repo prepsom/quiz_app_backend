@@ -41,16 +41,32 @@ const seedUserInGrade = async (
     try {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password,salt);
-    
-        const newUser = await prisma.user.create({data:{
-            email:email.trim().toLowerCase(),
-            gradeId:gradeId,
-            avatar:avatar,
-            role:role,
-            name:name,
-            password:hashedPassword,
-        }});
 
+        if(role==="STUDENT") {
+            await prisma.user.create({data:{
+                email:email.trim().toLowerCase(),
+                gradeId:gradeId,
+                avatar:avatar,
+                role:role,
+                name:name,
+                password:hashedPassword,
+            }});
+        } else if(role==="TEACHER") {
+            await prisma.user.create({
+                data:{
+                    email:email.trim().toLowerCase(),
+                    name,
+                    password:hashedPassword,
+                    role,
+                    avatar,
+                    teacherGrades:{
+                        create:{
+                            gradeId
+                        }
+                    }
+                }
+            });
+        }
         console.log('successfully seeded user in database');
     } catch (error) {
         console.log('FAILED TO SEED USER IN DATABASE :- ',error);

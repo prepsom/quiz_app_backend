@@ -13,6 +13,7 @@ const getSubjectsByGradeHandler = async (req:Request,res:Response) => {
     // once we have the grade , we fetch for the subjects by the grade
     // return subjects
     try {
+        const {gradeId} = req.params as {gradeId:string};
         const userId = req.userId;
         if(!userId)  {
             res.status(401).json({
@@ -29,8 +30,32 @@ const getSubjectsByGradeHandler = async (req:Request,res:Response) => {
             })
             return;
         }
-    
-        const subjects = await prisma.subject.findMany({where:{gradeId:user?.gradeId}});
+        // endpoint to get subjects under a specific grade
+        // if the user is a student and if belongs to the grade then show the subjects
+        // if the user is a teacher and if teaches the grade then show the subjects
+        if(user.role==="STUDENT") {
+            if(user.gradeId!==gradeId) {
+                res.status(401).json({
+                    "success":false,
+                    "message":"user unauthorized to get subjects under this grade"
+                })
+                return;
+            }
+        }
+
+        if(user.role==="TEACHER") {
+            const teachesGrade = await prisma.teacherGrade.findFirst({where:{teacherId:user.id,gradeId:gradeId}});
+            if(!teachesGrade) {
+                res.status(401).json({
+                    "success":false,
+                    "message":"teacher unauthorized to get subjects under this grade"
+                })
+                return;
+            }
+        }
+
+        const subjects = await prisma.subject.findMany({where:{gradeId:gradeId!}});
+        
         res.status(200).json({
             "success":true,
             subjects,
@@ -46,7 +71,7 @@ const getSubjectsByGradeHandler = async (req:Request,res:Response) => {
 
 const addSubjectByGradeHandler = async (req:Request,res:Response) => {
     try {
-            // get userId from req (added by middleware) to get the auth user id 
+    // get userId from req (added by middleware) to get the auth user id 
     const userId = req.userId;
     if(!userId)  {
         res.status(401).json({
@@ -55,7 +80,9 @@ const addSubjectByGradeHandler = async (req:Request,res:Response) => {
         })
         return;
     }
+    
     const user = await prisma.user.findUnique({where:{id:userId}});
+    
     if(!user) {
         res.status(400).json({
             "success":false,
@@ -72,6 +99,9 @@ const addSubjectByGradeHandler = async (req:Request,res:Response) => {
         });
         return;   
     }
+    
+    // if role== teacher   , check if teacher teaches that grade they are trying to add a subject to
+
     const {gradeId,subjectName} = req.body as AddSubjectRequestBody
 
     const grade = await prisma.grade.findUnique({where:{id:gradeId}});
@@ -81,6 +111,18 @@ const addSubjectByGradeHandler = async (req:Request,res:Response) => {
             "message":"grade not found"
         });
         return;
+    }
+
+    // check if role===TEACHER that teacher teaches this grade , if he/she doesn't then can't add subject in this grade
+    if(user.role==="TEACHER") {
+        const teacherGrade = await prisma.teacherGrade.findFirst({where:{teacherId:user.id,gradeId:grade.id}});
+        if(!teacherGrade) {
+            res.status(401).json({
+                "success":false,
+                "message":"teacher doesn't teach this grade. unauthorized to add a subject"
+            });
+            return;
+        }
     }
 
     const newSubject = await prisma.subject.create({data:{subjectName:subjectName.trim(),gradeId:grade.id}});
@@ -102,6 +144,7 @@ const deleteSubjectHandler = async (req:Request,res:Response) => {
     // delete subject
     const {subjectId} = req.params as {subjectId:string};
     const userId = req.userId;
+    
     if(!userId)  {
         res.status(401).json({
             "success":false,
@@ -109,6 +152,7 @@ const deleteSubjectHandler = async (req:Request,res:Response) => {
         })
         return;
     }
+    
     const user = await prisma.user.findUnique({where:{id:userId}});
     if(!user) {
         res.status(400).json({
@@ -126,6 +170,8 @@ const deleteSubjectHandler = async (req:Request,res:Response) => {
         return;
     }
 
+    // if role == teacher then if teacher teaches the grade that this subject is in then its ok for the teacher to delete the subject
+
     const subject = await prisma.subject.findUnique({where:{id:subjectId}});
     if(!subject) {
         res.status(400).json({
@@ -135,12 +181,25 @@ const deleteSubjectHandler = async (req:Request,res:Response) => {
         return;
     }
 
+    if(user.role==="TEACHER") {
+        const subjectGradeId = subject.gradeId;
+        const teachesGrade = await prisma.teacherGrade.findFirst({where:{teacherId:user.id,gradeId:subjectGradeId}});
+        if (!teachesGrade) {
+            res.status(401).json({
+                "success":false,
+                "message":"teacher doesn't teach this grade. unauthorized to delete a subject"
+            })
+            return;
+        }
+    }
+
     await prisma.subject.delete({where:{id:subject.id}});
     res.status(200).json({
         "success":true,
         "message":"subject deleted successfully"
     });
-    } catch (error) {
+    
+} catch (error) {
         console.log(error); 
     }
 }

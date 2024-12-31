@@ -17,6 +17,7 @@ const getSubjectsByGradeHandler = (req, res) => __awaiter(void 0, void 0, void 0
     // once we have the grade , we fetch for the subjects by the grade
     // return subjects
     try {
+        const { gradeId } = req.params;
         const userId = req.userId;
         if (!userId) {
             res.status(401).json({
@@ -33,7 +34,29 @@ const getSubjectsByGradeHandler = (req, res) => __awaiter(void 0, void 0, void 0
             });
             return;
         }
-        const subjects = yield __1.prisma.subject.findMany({ where: { gradeId: user === null || user === void 0 ? void 0 : user.gradeId } });
+        // endpoint to get subjects under a specific grade
+        // if the user is a student and if belongs to the grade then show the subjects
+        // if the user is a teacher and if teaches the grade then show the subjects
+        if (user.role === "STUDENT") {
+            if (user.gradeId !== gradeId) {
+                res.status(401).json({
+                    "success": false,
+                    "message": "user unauthorized to get subjects under this grade"
+                });
+                return;
+            }
+        }
+        if (user.role === "TEACHER") {
+            const teachesGrade = yield __1.prisma.teacherGrade.findFirst({ where: { teacherId: user.id, gradeId: gradeId } });
+            if (!teachesGrade) {
+                res.status(401).json({
+                    "success": false,
+                    "message": "teacher unauthorized to get subjects under this grade"
+                });
+                return;
+            }
+        }
+        const subjects = yield __1.prisma.subject.findMany({ where: { gradeId: gradeId } });
         res.status(200).json({
             "success": true,
             subjects,
@@ -75,6 +98,7 @@ const addSubjectByGradeHandler = (req, res) => __awaiter(void 0, void 0, void 0,
             });
             return;
         }
+        // if role== teacher   , check if teacher teaches that grade they are trying to add a subject to
         const { gradeId, subjectName } = req.body;
         const grade = yield __1.prisma.grade.findUnique({ where: { id: gradeId } });
         if (!grade) {
@@ -83,6 +107,17 @@ const addSubjectByGradeHandler = (req, res) => __awaiter(void 0, void 0, void 0,
                 "message": "grade not found"
             });
             return;
+        }
+        // check if role===TEACHER that teacher teaches this grade , if he/she doesn't then can't add subject in this grade
+        if (user.role === "TEACHER") {
+            const teacherGrade = yield __1.prisma.teacherGrade.findFirst({ where: { teacherId: user.id, gradeId: grade.id } });
+            if (!teacherGrade) {
+                res.status(401).json({
+                    "success": false,
+                    "message": "teacher doesn't teach this grade. unauthorized to add a subject"
+                });
+                return;
+            }
         }
         const newSubject = yield __1.prisma.subject.create({ data: { subjectName: subjectName.trim(), gradeId: grade.id } });
         res.status(201).json({
@@ -126,6 +161,7 @@ const deleteSubjectHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
             });
             return;
         }
+        // if role == teacher then if teacher teaches the grade that this subject is in then its ok for the teacher to delete the subject
         const subject = yield __1.prisma.subject.findUnique({ where: { id: subjectId } });
         if (!subject) {
             res.status(400).json({
@@ -133,6 +169,17 @@ const deleteSubjectHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
                 "message": "subject not found"
             });
             return;
+        }
+        if (user.role === "TEACHER") {
+            const subjectGradeId = subject.gradeId;
+            const teachesGrade = yield __1.prisma.teacherGrade.findFirst({ where: { teacherId: user.id, gradeId: subjectGradeId } });
+            if (!teachesGrade) {
+                res.status(401).json({
+                    "success": false,
+                    "message": "teacher doesn't teach this grade. unauthorized to delete a subject"
+                });
+                return;
+            }
         }
         yield __1.prisma.subject.delete({ where: { id: subject.id } });
         res.status(200).json({

@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,10 +11,11 @@ datasource db {
 }
 
 model Grade {
-  id       String    @id @default(uuid())
-  grade    Int
-  Users    User[]
-  Subjects Subject[]
+  id           String         @id @default(uuid())
+  grade        Int
+  students     User[]         @relation("StudentGrade")
+  TeacherGrade TeacherGrade[]
+  Subjects     Subject[]
 }
 
 model User {
@@ -28,15 +26,30 @@ model User {
   role              Role               @default(STUDENT)
   createdAt         DateTime           @default(now())
   avatar            Avatar             @default(MALE)
-  grade             Grade              @relation(fields: [gradeId], references: [id],onDelete: Cascade)
-  gradeId           String
+  // Only for students
+  grade             Grade?             @relation("StudentGrade", fields: [gradeId], references: [id], onDelete: Cascade)
+  gradeId           String?
+  // Only for teachers
+  teacherGrades     TeacherGrade[]
   QuestionResponses QuestionResponse[]
+}
+
+// Junction table for Teacher-Grade many-to-many relationship
+model TeacherGrade {
+  id        String   @id @default(uuid())
+  teacher   User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  teacherId String
+  grade     Grade    @relation(fields: [gradeId], references: [id], onDelete: Cascade)
+  gradeId   String
+  createdAt DateTime @default(now())
+
+  @@unique([teacherId, gradeId])
 }
 
 model Subject {
   id          String  @id @default(uuid())
   subjectName String
-  grade       Grade   @relation(fields: [gradeId], references: [id],onDelete: Cascade)
+  grade       Grade   @relation(fields: [gradeId], references: [id], onDelete: Cascade)
   gradeId     String
   Levels      Level[]
 }
@@ -45,7 +58,7 @@ model Level {
   id               String     @id @default(uuid())
   levelName        String
   levelDescription String?
-  subject          Subject    @relation(fields: [subjectId], references: [id],onDelete: Cascade)
+  subject          Subject    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   subjectId        String
   Questions        Question[]
 }
@@ -55,10 +68,10 @@ model Question {
   questionTitle    String
   questionHint     String?
   difficulty       Difficulty         @default(EASY)
-  level            Level              @relation(fields: [levelId], references: [id],onDelete: Cascade)
+  level            Level              @relation(fields: [levelId], references: [id], onDelete: Cascade)
   levelId          String
-  Answers          Answer[] // possible answers (to show answer choices to the user) 
-  correctAnswer    Answer             @relation("correctAnswer", fields: [correctAnswerId], references: [id],onDelete: Cascade)
+  Answers          Answer[]
+  correctAnswer    Answer             @relation("correctAnswer", fields: [correctAnswerId], references: [id], onDelete: Cascade)
   correctAnswerId  String             @unique
   QuestionResponse QuestionResponse[]
 }
@@ -66,7 +79,7 @@ model Question {
 model Answer {
   id                 String             @id @default(uuid())
   value              String
-  question           Question           @relation(fields: [questionId], references: [id],onDelete: Cascade)
+  question           Question           @relation(fields: [questionId], references: [id], onDelete: Cascade)
   questionId         String
   correctForQuestion Question?          @relation("correctAnswer")
   QuestionResponse   QuestionResponse[]
@@ -74,11 +87,11 @@ model Answer {
 
 model QuestionResponse {
   id             String   @id @default(uuid())
-  question       Question @relation(fields: [questionId], references: [id],onDelete: Cascade)
+  question       Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
   questionId     String
-  responder      User     @relation(fields: [responderId], references:[id],onDelete: Cascade)
+  responder      User     @relation(fields: [responderId], references: [id], onDelete: Cascade)
   responderId    String
-  chosenAnswer   Answer   @relation(fields: [chosenAnswerId], references: [id],onDelete: Cascade)
+  chosenAnswer   Answer   @relation(fields: [chosenAnswerId], references: [id], onDelete: Cascade)
   chosenAnswerId String
   pointsEarned   Int
   isCorrect      Boolean
