@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getLevelsBySubjectHandler = exports.addLevelHandler = void 0;
+exports.updateLevelHandler = exports.deleteLevelHandler = exports.getLevelsBySubjectHandler = exports.addLevelHandler = void 0;
 const __1 = require("..");
 const addLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     // who can add levels -> teachers 
@@ -117,3 +117,106 @@ const getLevelsBySubjectHandler = (req, res) => __awaiter(void 0, void 0, void 0
     }
 });
 exports.getLevelsBySubjectHandler = getLevelsBySubjectHandler;
+const deleteLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { levelId } = req.params;
+        const userId = req.userId;
+        const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
+        if (!user || user.role === "STUDENT") {
+            res.status(401).json({
+                success: false,
+                message: "Unauthorized user.",
+            });
+            return;
+        }
+        const level = yield __1.prisma.level.findUnique({ where: { id: levelId }, include: { subject: true } });
+        if (!level) {
+            res.status(404).json({
+                success: false,
+                message: "Level not found.",
+            });
+            return;
+        }
+        const gradeId = level.subject.gradeId; // grade in which the level is in 
+        if (user.role === "TEACHER") {
+            const teachesGrade = yield __1.prisma.teacherGrade.findFirst({ where: { teacherId: user.id, gradeId: gradeId } });
+            if (!teachesGrade) {
+                res.status(401).json({
+                    success: false,
+                    message: "Teacher is not authorized to delete levels of this subject.",
+                });
+                return;
+            }
+        }
+        yield __1.prisma.level.delete({ where: { id: level.id } });
+        res.status(200).json({
+            success: true,
+            message: "Level deleted successfully.",
+        });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error while deleting the level.",
+        });
+    }
+});
+exports.deleteLevelHandler = deleteLevelHandler;
+const updateLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { levelId } = req.params;
+        const { newLevelName } = req.body;
+        const userId = req.userId;
+        // complete this update level handler
+        const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
+        if (!user || user.role === "STUDENT") {
+            res.status(401).json({
+                success: false,
+                message: "Unauthorized user.",
+            });
+            return;
+        }
+        const level = yield __1.prisma.level.findUnique({
+            where: { id: levelId },
+            include: { subject: true },
+        });
+        if (!level) {
+            res.status(404).json({
+                success: false,
+                message: "Level not found.",
+            });
+            return;
+        }
+        const gradeId = level.subject.gradeId; // Grade in which the level is present
+        if (user.role === "TEACHER") {
+            const teachesGrade = yield __1.prisma.teacherGrade.findFirst({
+                where: { teacherId: user.id, gradeId },
+            });
+            if (!teachesGrade) {
+                res.status(403).json({
+                    success: false,
+                    message: "Teacher is not authorized to update levels of this subject.",
+                });
+                return;
+            }
+        }
+        const updatedLevel = yield __1.prisma.level.update({
+            where: { id: level.id },
+            data: { levelName: newLevelName.trim() },
+        });
+        res.status(200).json({
+            success: true,
+            message: "Level updated successfully.",
+            level: updatedLevel,
+        });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({
+            "success": false,
+            "message": "Internal server error while updating the level"
+        });
+    }
+});
+exports.updateLevelHandler = updateLevelHandler;

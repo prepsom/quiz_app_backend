@@ -7,6 +7,11 @@ type AddLevelRequestBody = {
     subjectId:string;
 }
 
+type UpdateLevelRequestBody = {
+    newLevelName:string;
+}
+
+
 const addLevelHandler = async (req:Request,res:Response) =>  {
     // who can add levels -> teachers 
     try {
@@ -127,7 +132,120 @@ const getLevelsBySubjectHandler = async (req:Request,res:Response) => {
     }
 }
 
+const deleteLevelHandler = async (req:Request,res:Response) => {
+    try {
+        const {levelId} = req.params as {levelId:string};
+        const userId = req.userId;
+    
+        const user = await prisma.user.findUnique({where:{id:userId}});
+        if (!user || user.role==="STUDENT") {
+            res.status(401).json({
+                success: false,
+                message: "Unauthorized user.",
+            });
+            return;
+        }
+    
+        const level = await prisma.level.findUnique({ where: { id: levelId },include:{subject:true}});
+        if (!level) {
+            res.status(404).json({
+                success: false,
+                message: "Level not found.",
+            });
+            return;
+        }    
+    
+        const gradeId = level.subject.gradeId; // grade in which the level is in 
+    
+        if(user.role==="TEACHER") {
+            const teachesGrade = await prisma.teacherGrade.findFirst({where:{teacherId:user.id,gradeId:gradeId}});
+            if(!teachesGrade) {
+                res.status(401).json({
+                    success: false,
+                    message: "Teacher is not authorized to delete levels of this subject.",
+                });
+                return;
+            }
+        }
+    
+        await prisma.level.delete({where:{id:level.id}});
+        res.status(200).json({
+            success: true,
+            message: "Level deleted successfully.",
+        });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error while deleting the level.",
+        });
+    }
+}
+
+const updateLevelHandler = async (req:Request,res:Response) => {
+    try {
+        const {levelId} = req.params as {levelId:string};
+        const {newLevelName} = req.body as UpdateLevelRequestBody;
+        const userId = req.userId;
+    
+        // complete this update level handler
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        if (!user || user.role === "STUDENT") {
+            res.status(401).json({
+                success: false,
+                message: "Unauthorized user.",
+            });
+            return;
+        }
+    
+        const level = await prisma.level.findUnique({
+            where: { id: levelId },
+            include: { subject: true },
+        });
+        if (!level) {
+            res.status(404).json({
+                success: false,
+                message: "Level not found.",
+            });
+            return;
+        }
+    
+        const gradeId = level.subject.gradeId; // Grade in which the level is present
+        if (user.role === "TEACHER") {
+            const teachesGrade = await prisma.teacherGrade.findFirst({
+                where: { teacherId: user.id, gradeId },
+            });
+            if (!teachesGrade) {
+                res.status(403).json({
+                    success: false,
+                    message: "Teacher is not authorized to update levels of this subject.",
+                });
+                return;
+            }
+        }
+    
+        const updatedLevel = await prisma.level.update({
+            where: { id: level.id },
+            data: { levelName: newLevelName.trim()},
+        });
+    
+        res.status(200).json({
+            success: true,
+            message: "Level updated successfully.",
+            level: updatedLevel,
+        });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            "success":false,
+            "message":"Internal server error while updating the level"
+        })
+    }
+}
+
 export {
     addLevelHandler,
     getLevelsBySubjectHandler,
+    deleteLevelHandler,
+    updateLevelHandler,
 }

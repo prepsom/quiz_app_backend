@@ -9,4 +9,6 @@ const level_controller_1 = require("../controllers/level.controller");
 const router = express_1.default.Router();
 router.post("/", auth_middleware_1.authenticateUser, level_controller_1.addLevelHandler);
 router.get("/:subjectId", auth_middleware_1.authenticateUser, level_controller_1.getLevelsBySubjectHandler);
+router.delete("/:levelId", auth_middleware_1.authenticateUser, level_controller_1.deleteLevelHandler);
+router.put("/:levelId", auth_middleware_1.authenticateUser, level_controller_1.updateLevelHandler);
 exports.default = router;

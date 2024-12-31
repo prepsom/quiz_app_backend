@@ -8,4 +8,5 @@ router.post("/login",loginHandler);
 router.get("/user",authenticateUser,getAuthUserHandler);
 router.get("/logout",authenticateUser,logoutHandler);
 
+
 export default router;
