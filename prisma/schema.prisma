@@ -72,18 +72,16 @@ model Question {
   level            Level              @relation(fields: [levelId], references: [id], onDelete: Cascade)
   levelId          String
   Answers          Answer[]
-  correctAnswer    Answer             @relation("correctAnswer", fields: [correctAnswerId], references: [id], onDelete: Cascade)
-  correctAnswerId  String             @unique
   QuestionResponse QuestionResponse[]
 }
 
 model Answer {
-  id                 String             @id @default(uuid())
-  value              String
-  question           Question           @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  questionId         String
-  correctForQuestion Question?          @relation("correctAnswer")
-  QuestionResponse   QuestionResponse[]
+  id               String             @id @default(uuid())
+  value            String
+  question         Question           @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  questionId       String
+  isCorrect        Boolean            @default(false)
+  QuestionResponse QuestionResponse[]
 }
 
 model QuestionResponse {
@@ -98,7 +96,6 @@ model QuestionResponse {
   isCorrect      Boolean
   responseTime   Int
   createdAt      DateTime @default(now())
-
   @@unique([responderId, questionId])
 }
 

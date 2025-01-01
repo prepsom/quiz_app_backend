@@ -8,6 +8,8 @@ import { dbInit, seedUsers } from "./utils/dbSeeder";
 import authRoutes from "./routes/auth.routes"
 import subjectRoutes from "./routes/subject.routes"
 import levelRoutes from "./routes/level.routes"
+import questionRoutes from "./routes/question.routes"
+import answerRoutes from "./routes/answer.route"
 
 const app = express();
 const port = process.env.PORT;
@@ -42,6 +44,8 @@ app.get("/test",async (req:Request,res:Response) => {
 app.use("/auth",authRoutes);
 app.use("/subject",subjectRoutes);
 app.use("/level",levelRoutes);
+app.use("/question",questionRoutes);
+app.use("/answer",answerRoutes);
 
 initialize().catch((e) => {
     process.exit(1);
