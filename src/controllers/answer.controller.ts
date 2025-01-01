@@ -9,6 +9,7 @@ type CreateAnswerRequestBody = {
 
 const createAnswerForQuestionHandler = async (req:Request,res:Response) => {
     try {
+        const ANSWERS_PER_QUESTION = 4;
         const userId = req.userId;
         const {questionId,value} = req.body as CreateAnswerRequestBody;
         const user = await prisma.user.findUnique({where:{id:userId}});
@@ -50,7 +51,7 @@ const createAnswerForQuestionHandler = async (req:Request,res:Response) => {
         }
 
         // if question has 4 answers already then you can't add more answers to the question
-        if(question.Answers.length >= 4) {
+        if(question.Answers.length >= ANSWERS_PER_QUESTION) {
             res.status(400).json({
                 "success":false,
                 "message":"question already has 4 answers"

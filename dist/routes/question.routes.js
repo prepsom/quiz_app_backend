@@ -9,4 +9,6 @@ const question_controller_1 = require("../controllers/question.controller");
 const router = express_1.default.Router();
 router.get("/:levelId", auth_middleware_1.authenticateUser, question_controller_1.getQuestionsByLevelHandler);
 router.post("/", auth_middleware_1.authenticateUser, question_controller_1.addQuestionByLevelHandler);
+router.delete("/:questionId", auth_middleware_1.authenticateUser, question_controller_1.deleteQuestionHandler);
+router.get("/answers/:questionId", auth_middleware_1.authenticateUser, question_controller_1.getQuestionWithAnswers);
 exports.default = router;

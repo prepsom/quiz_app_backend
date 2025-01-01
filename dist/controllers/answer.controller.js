@@ -13,6 +13,7 @@ exports.updateCorrectAnswerHandler = exports.createAnswerForQuestionHandler = vo
 const __1 = require("..");
 const createAnswerForQuestionHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
+        const ANSWERS_PER_QUESTION = 4;
         const userId = req.userId;
         const { questionId, value } = req.body;
         const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
@@ -50,7 +51,7 @@ const createAnswerForQuestionHandler = (req, res) => __awaiter(void 0, void 0, v
             }
         }
         // if question has 4 answers already then you can't add more answers to the question
-        if (question.Answers.length >= 4) {
+        if (question.Answers.length >= ANSWERS_PER_QUESTION) {
             res.status(400).json({
                 "success": false,
                 "message": "question already has 4 answers"

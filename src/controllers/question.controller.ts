@@ -21,9 +21,11 @@ const getQuestionsByLevelHandler = async (req:Request,res:Response) => {
             })
             return;
         }   
+
         const level = await prisma.level.findUnique({where:{id:levelId},include:{
             subject:true,
         }});
+        
         if(!level) {
             res.status(400).json({
                 "success":false,
@@ -123,10 +125,12 @@ const addQuestionByLevelHandler = async (req:Request,res:Response) => {
                 levelId
             }
         });
+
         res.status(201).json({
             success: true,
             question
         });
+
     } catch (error) {
         console.log(error);
         res.status(500).json({
@@ -136,7 +140,132 @@ const addQuestionByLevelHandler = async (req:Request,res:Response) => {
     }
 }
 
+
+const deleteQuestionHandler = async (req:Request,res:Response) => {
+    try {
+        const {questionId} = req.params as {questionId:string};
+        const userId = req.userId;
+    
+        // complete this handler
+        const user = await prisma.user.findUnique({where:{id:userId}});
+        if(!user || user.role==="STUDENT") {
+            res.status(401).json({
+                "success":false,
+                "message":"student cannot delete questions"
+            })
+            return;
+        }
+    
+        const question = await prisma.question.findUnique({where:{id:questionId},include:{
+            level:{
+                select:{
+                    subject:true,
+                }
+            }
+        }});
+        if(!question) {
+            res.status(400).json({
+                "success":false,
+                "message":"question not found"
+            })
+            return;
+        }
+    
+        if(user.role==="TEACHER") {
+            const teachesGrade = await prisma.teacherGrade.findFirst({where:{teacherId:user.id,gradeId:question?.level.subject.gradeId}});
+            if(!teachesGrade) {
+                res.status(401).json({
+                    "success":false,
+                    "message":"teacher cannot delete question in this grade"
+                })
+                return;
+            }
+        }
+    
+        await prisma.question.delete({where:{id:question?.id}});
+        res.status(200).json({
+            "success":true,
+            "message":`question deleted successfully`
+        });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            "success":false,
+            "message":"internal server error when deleting question"
+        });
+    }
+}
+
+const getQuestionWithAnswers = async (req:Request,res:Response) => {
+    try {
+        const {questionId} = req.params as {questionId:string};
+        const userId = req.userId;
+    
+        const user = await prisma.user.findUnique({where:{id:userId}});
+        if(!user) {
+            res.status(400).json({
+                "success":false,
+                "message":"invalid user id"
+            })
+            return;
+        }
+    
+        const question = await prisma.question.findUnique({where:{id:questionId},include:{
+            level:{
+                select:{
+                    subject:true,
+                }
+            }
+        }});
+        if(!question) {
+            res.status(400).json({
+                "success":false,
+                "message":"question not found"
+            });
+            return;
+        }
+    
+        const gradeId = question.level.subject.gradeId;
+        
+        if(user.role==="STUDENT" && user.gradeId!==gradeId) {
+            res.status(401).json({
+                "success":false,
+                "message":"student cannot read questions for this grade"
+            })
+            return;
+        }
+    
+        if(user.role==="TEACHER") {
+            const teachesGrade = await prisma.teacherGrade.findFirst({where:{teacherId:user.id,gradeId:gradeId}});
+            if(!teachesGrade) {
+                res.status(401).json({
+                    "success":false,
+                    "message":"teacher cannot read questions for this grade"
+                })
+                return;
+            }
+        }
+    
+        const questionWithAnswers = await prisma.question.findUnique({where:{id:question.id},include:{
+            Answers:true,
+        }});
+        res.status(200).json({
+            "success":true,
+            "question":questionWithAnswers,
+        });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            "success":false,
+            "message":"internal server error when getting question with its answers"
+        });
+    }
+}
+
+
 export  {
     getQuestionsByLevelHandler,
     addQuestionByLevelHandler,
+    deleteQuestionHandler,
+    getQuestionWithAnswers,
 }
