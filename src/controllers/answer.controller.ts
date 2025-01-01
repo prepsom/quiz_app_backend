@@ -25,7 +25,8 @@ const createAnswerForQuestionHandler = async (req:Request,res:Response) => {
                 select:{
                     subject:true,
                 }
-            }
+            },
+            Answers:true,
         }});
         
         if(!question) {
@@ -46,6 +47,15 @@ const createAnswerForQuestionHandler = async (req:Request,res:Response) => {
                 })
                 return;
             }
+        }
+
+        // if question has 4 answers already then you can't add more answers to the question
+        if(question.Answers.length >= 4) {
+            res.status(400).json({
+                "success":false,
+                "message":"question already has 4 answers"
+            })
+            return;
         }
 
         if(value.trim()==="") {
@@ -160,7 +170,7 @@ const updateCorrectAnswerHandler = async (req:Request,res:Response) => {
                         isCorrect:true,
                     }})
                 ]);
-                
+
                 responseMessage = `answer with id ${answer.id} is now the correct answer`;
             }
         }

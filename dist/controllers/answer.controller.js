@@ -28,7 +28,8 @@ const createAnswerForQuestionHandler = (req, res) => __awaiter(void 0, void 0, v
                     select: {
                         subject: true,
                     }
-                }
+                },
+                Answers: true,
             } });
         if (!question) {
             res.status(400).json({
@@ -47,6 +48,14 @@ const createAnswerForQuestionHandler = (req, res) => __awaiter(void 0, void 0, v
                 });
                 return;
             }
+        }
+        // if question has 4 answers already then you can't add more answers to the question
+        if (question.Answers.length >= 4) {
+            res.status(400).json({
+                "success": false,
+                "message": "question already has 4 answers"
+            });
+            return;
         }
         if (value.trim() === "") {
             res.status(400).json({
