@@ -24,6 +24,7 @@ const subject_routes_1 = __importDefault(require("./routes/subject.routes"));
 const level_routes_1 = __importDefault(require("./routes/level.routes"));
 const question_routes_1 = __importDefault(require("./routes/question.routes"));
 const answer_route_1 = __importDefault(require("./routes/answer.route"));
+const questionResponse_route_1 = __importDefault(require("./routes/questionResponse.route"));
 const app = (0, express_1.default)();
 const port = process.env.PORT;
 // instantiating a new prisma client
@@ -56,6 +57,7 @@ app.use("/subject", subject_routes_1.default);
 app.use("/level", level_routes_1.default);
 app.use("/question", question_routes_1.default);
 app.use("/answer", answer_route_1.default);
+app.use("/question-response", questionResponse_route_1.default);
 initialize().catch((e) => {
     process.exit(1);
 });

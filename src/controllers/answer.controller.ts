@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { prisma } from "..";
+import { updateQuestionReadyStatus } from "../utils/question.utils";
 
 
 type CreateAnswerRequestBody = {
@@ -68,6 +69,7 @@ const createAnswerForQuestionHandler = async (req:Request,res:Response) => {
         }
 
         const answer = await prisma.answer.create({data:{value:value,questionId:question.id}});
+        await updateQuestionReadyStatus(question.id);
         res.status(201).json({
             "success":true,
             answer,
@@ -150,6 +152,7 @@ const updateCorrectAnswerHandler = async (req:Request,res:Response) => {
             await prisma.answer.update({where:{id:answer.id},data:{
                 isCorrect:true,
             }});
+            await updateQuestionReadyStatus(answer.questionId);
             responseMessage = `answer with id ${answer.id} is now the correct answer`;
         } else {
             // a correct answer is already selected
@@ -158,6 +161,7 @@ const updateCorrectAnswerHandler = async (req:Request,res:Response) => {
                 await prisma.answer.update({where:{id:answer.id},data:{
                     isCorrect:false,
                 }});
+                await updateQuestionReadyStatus(answer.questionId);
                 responseMessage = `answer with id ${answer.id} is now not the correct answer`;
             } else {
                 //another answer is correct
@@ -172,10 +176,11 @@ const updateCorrectAnswerHandler = async (req:Request,res:Response) => {
                     }})
                 ]);
 
+                await updateQuestionReadyStatus(answer.questionId);
                 responseMessage = `answer with id ${answer.id} is now the correct answer`;
+                
             }
         }
-    
         res.status(200).json({
             "success":true,
             "message":responseMessage,
@@ -189,7 +194,71 @@ const updateCorrectAnswerHandler = async (req:Request,res:Response) => {
     }
 }
 
+const deleteAnswerHandler = async (req:Request,res:Response) => {
+    // delete answer handler
+    try {
+        const {answerId} = req.params as {answerId:string};
+        const userId = req.userId;
+        
+        const user = await prisma.user.findUnique({where:{id:userId}});
+        if(!user || user.role==="STUDENT") {
+            res.status(401).json({
+                "success":false,
+                "message":"student cannot delete answers"
+            })
+            return;
+        }
+    
+        const answer = await prisma.answer.findUnique({where:{id:answerId},include:{
+            question:{
+                select:{
+                    level:{
+                        select:{
+                            subject:true,
+                        }
+                    }
+                }
+            }
+        }});
+
+
+        if(!answer) {
+            res.status(400).json({
+                "success":false,
+                "message":"answer not found"
+            });
+            return;
+        }
+    
+        if(user.role==="TEACHER") {
+            const gradeId = answer.question.level.subject.gradeId;
+            const teachesGrade = await prisma.teacherGrade.findFirst({where:{teacherId:user.id,gradeId:gradeId}});
+            if(!teachesGrade) {
+                res.status(401).json({
+                    "success":false,
+                    "message":"teacher cannot delete answers in this grade"
+                })
+                return;
+            }
+        }
+    
+        await prisma.answer.delete({where:{id:answer.id}});
+        await updateQuestionReadyStatus(answer.questionId);
+        res.status(200).json({
+            "success":true,
+            "message":"answer deleted successfully"
+        })
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            "success":false,
+            "message":"internal server error when deleting answer"
+        })
+    }
+}
+
 export {
     createAnswerForQuestionHandler,
     updateCorrectAnswerHandler,
+    deleteAnswerHandler
 }

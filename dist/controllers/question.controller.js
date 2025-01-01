@@ -232,9 +232,17 @@ const getQuestionWithAnswers = (req, res) => __awaiter(void 0, void 0, void 0, f
         const questionWithAnswers = yield __1.prisma.question.findUnique({ where: { id: question.id }, include: {
                 Answers: true,
             } });
+        const answers = user.role === "STUDENT" ? questionWithAnswers === null || questionWithAnswers === void 0 ? void 0 : questionWithAnswers.Answers.map((answer) => {
+            return {
+                id: answer.id,
+                value: answer.value,
+                questionId: answer.questionId,
+            };
+        }) : questionWithAnswers === null || questionWithAnswers === void 0 ? void 0 : questionWithAnswers.Answers;
+        const response = Object.assign(Object.assign({}, questionWithAnswers), { "Answers": answers });
         res.status(200).json({
             "success": true,
-            "question": questionWithAnswers,
+            "question": response,
         });
     }
     catch (error) {

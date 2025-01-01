@@ -1,5 +1,6 @@
 import { Request, Response } from "express"
 import { prisma } from "..";
+import { Answer } from "@prisma/client";
 
 type AddQuestionRequestBody = {
     questionTitle:string;
@@ -238,10 +239,12 @@ const getQuestionWithAnswers = async (req:Request,res:Response) => {
         if(user.role==="TEACHER") {
             const teachesGrade = await prisma.teacherGrade.findFirst({where:{teacherId:user.id,gradeId:gradeId}});
             if(!teachesGrade) {
+                
                 res.status(401).json({
                     "success":false,
                     "message":"teacher cannot read questions for this grade"
                 })
+                
                 return;
             }
         }
@@ -249,9 +252,21 @@ const getQuestionWithAnswers = async (req:Request,res:Response) => {
         const questionWithAnswers = await prisma.question.findUnique({where:{id:question.id},include:{
             Answers:true,
         }});
+
+        const answers = user.role==="STUDENT" ? questionWithAnswers?.Answers.map((answer:Answer) => {
+            return {
+                id:answer.id,
+                value:answer.value,
+                questionId:answer.questionId,
+            }
+        }) : questionWithAnswers?.Answers;
+        const response = {
+            ...questionWithAnswers,
+            "Answers":answers,
+        }
         res.status(200).json({
             "success":true,
-            "question":questionWithAnswers,
+            "question":response,
         });
     } catch (error) {
         console.log(error);

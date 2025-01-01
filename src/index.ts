@@ -10,6 +10,7 @@ import subjectRoutes from "./routes/subject.routes"
 import levelRoutes from "./routes/level.routes"
 import questionRoutes from "./routes/question.routes"
 import answerRoutes from "./routes/answer.route"
+import questionResponseRoutes from "./routes/questionResponse.route"
 
 const app = express();
 const port = process.env.PORT;
@@ -46,6 +47,7 @@ app.use("/subject",subjectRoutes);
 app.use("/level",levelRoutes);
 app.use("/question",questionRoutes);
 app.use("/answer",answerRoutes);
+app.use("/question-response",questionResponseRoutes);
 
 initialize().catch((e) => {
     process.exit(1);

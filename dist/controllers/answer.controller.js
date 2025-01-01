@@ -9,8 +9,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateCorrectAnswerHandler = exports.createAnswerForQuestionHandler = void 0;
+exports.deleteAnswerHandler = exports.updateCorrectAnswerHandler = exports.createAnswerForQuestionHandler = void 0;
 const __1 = require("..");
+const question_utils_1 = require("../utils/question.utils");
 const createAnswerForQuestionHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const ANSWERS_PER_QUESTION = 4;
@@ -66,6 +67,7 @@ const createAnswerForQuestionHandler = (req, res) => __awaiter(void 0, void 0, v
             return;
         }
         const answer = yield __1.prisma.answer.create({ data: { value: value, questionId: question.id } });
+        yield (0, question_utils_1.updateQuestionReadyStatus)(question.id);
         res.status(201).json({
             "success": true,
             answer,
@@ -142,6 +144,7 @@ const updateCorrectAnswerHandler = (req, res) => __awaiter(void 0, void 0, void 
             yield __1.prisma.answer.update({ where: { id: answer.id }, data: {
                     isCorrect: true,
                 } });
+            yield (0, question_utils_1.updateQuestionReadyStatus)(answer.questionId);
             responseMessage = `answer with id ${answer.id} is now the correct answer`;
         }
         else {
@@ -151,6 +154,7 @@ const updateCorrectAnswerHandler = (req, res) => __awaiter(void 0, void 0, void 
                 yield __1.prisma.answer.update({ where: { id: answer.id }, data: {
                         isCorrect: false,
                     } });
+                yield (0, question_utils_1.updateQuestionReadyStatus)(answer.questionId);
                 responseMessage = `answer with id ${answer.id} is now not the correct answer`;
             }
             else {
@@ -165,6 +169,7 @@ const updateCorrectAnswerHandler = (req, res) => __awaiter(void 0, void 0, void 
                             isCorrect: true,
                         } })
                 ]);
+                yield (0, question_utils_1.updateQuestionReadyStatus)(answer.questionId);
                 responseMessage = `answer with id ${answer.id} is now the correct answer`;
             }
         }
@@ -182,3 +187,61 @@ const updateCorrectAnswerHandler = (req, res) => __awaiter(void 0, void 0, void 
     }
 });
 exports.updateCorrectAnswerHandler = updateCorrectAnswerHandler;
+const deleteAnswerHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    // delete answer handler
+    try {
+        const { answerId } = req.params;
+        const userId = req.userId;
+        const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
+        if (!user || user.role === "STUDENT") {
+            res.status(401).json({
+                "success": false,
+                "message": "student cannot delete answers"
+            });
+            return;
+        }
+        const answer = yield __1.prisma.answer.findUnique({ where: { id: answerId }, include: {
+                question: {
+                    select: {
+                        level: {
+                            select: {
+                                subject: true,
+                            }
+                        }
+                    }
+                }
+            } });
+        if (!answer) {
+            res.status(400).json({
+                "success": false,
+                "message": "answer not found"
+            });
+            return;
+        }
+        if (user.role === "TEACHER") {
+            const gradeId = answer.question.level.subject.gradeId;
+            const teachesGrade = yield __1.prisma.teacherGrade.findFirst({ where: { teacherId: user.id, gradeId: gradeId } });
+            if (!teachesGrade) {
+                res.status(401).json({
+                    "success": false,
+                    "message": "teacher cannot delete answers in this grade"
+                });
+                return;
+            }
+        }
+        yield __1.prisma.answer.delete({ where: { id: answer.id } });
+        yield (0, question_utils_1.updateQuestionReadyStatus)(answer.questionId);
+        res.status(200).json({
+            "success": true,
+            "message": "answer deleted successfully"
+        });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({
+            "success": false,
+            "message": "internal server error when deleting answer"
+        });
+    }
+});
+exports.deleteAnswerHandler = deleteAnswerHandler;

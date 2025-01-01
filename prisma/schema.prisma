@@ -73,6 +73,7 @@ model Question {
   levelId          String
   Answers          Answer[]
   QuestionResponse QuestionResponse[]
+  ready            Boolean            @default(false)
 }
 
 model Answer {
@@ -96,6 +97,7 @@ model QuestionResponse {
   isCorrect      Boolean
   responseTime   Int
   createdAt      DateTime @default(now())
+
   @@unique([responderId, questionId])
 }
 
