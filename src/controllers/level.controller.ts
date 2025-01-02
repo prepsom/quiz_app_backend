@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { prisma } from "..";
+import { $Enums, Question } from "@prisma/client";
 
 
 type AddLevelRequestBody = {
@@ -242,10 +243,102 @@ const updateLevelHandler = async (req:Request,res:Response) => {
         })
     }
 }
+type LevelResult = {
+    totalPoints: number;
+    correctAnswers: number;
+    totalQuestions: number;
+    questionResults: {
+        question: {
+            id: string;
+            questionTitle: string;
+            questionHint: string | null;
+            difficulty: $Enums.Difficulty;
+            levelId: string;
+            ready: boolean;
+        };
+        isCorrect: boolean;
+        pointsEarned: number;
+        responseTime: number;
+    }[];
+}
+
+const getLevelResultsHandler = async (req:Request,res:Response) => {
+    try {
+        const {levelId} = req.params as {levelId:string};
+        const userId = req.userId;
+    
+        // get results for questions answered in a level by the user 
+        const user = await prisma.user.findUnique({where:{id:userId}});
+        if(!user) {
+            res.status(400).json({
+                "success":false,
+                "message":"invalid user id"
+            })
+    
+            return;
+        }
+    
+        const level = await prisma.level.findUnique({where:{id:levelId}});
+        if(!level) {
+            res.status(400).json({
+                "success":false,
+                "message":"level not found"
+            });
+    
+            return;
+        }
+    
+        const responses = await prisma.questionResponse.findMany({
+            where:{
+                 responderId:user.id,
+                 question:{
+                    levelId:level.id,
+                 }
+            },
+            include:{
+                question:true,
+            }
+        });
+    
+        if(responses.length===0) {
+            res.status(404).json({
+                "success":false,
+                "message":"No results found for this level"
+            });
+            return;
+        }
+        
+        const result:LevelResult = {
+            totalPoints:responses.reduce((sum,r) => sum + r.pointsEarned,0),
+            correctAnswers:responses.filter(r => r.isCorrect).length,
+            totalQuestions:responses.length,
+            questionResults:responses.map((r => {
+                return {
+                    question:r.question,
+                    isCorrect:r.isCorrect,
+                    pointsEarned:r.pointsEarned,
+                    responseTime:r.responseTime
+                }
+            }))
+        };
+    
+        res.status(200).json({
+            success: true,
+            result
+        });
+    } catch (error) {
+        console.error("Error in getLevelResultsHandler:", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error when fetching level results"
+        });
+    }
+}
 
 export {
     addLevelHandler,
     getLevelsBySubjectHandler,
     deleteLevelHandler,
     updateLevelHandler,
+    getLevelResultsHandler,
 }

@@ -11,65 +11,52 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.answerQuestionHandler = void 0;
 const __1 = require("..");
+const POINTS_MAP = {
+    "EASY": 10,
+    "MEDIUM": 15,
+    "HARD": 20
+};
+const TIME_BONUS_THRESHOLD = 60; // seconds
+const TIME_BONUS_POINTS = 2;
 const answerQuestionHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { questionId, selectedAnswerId, timeTaken } = req.body;
         const userId = req.userId;
-        const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
+        // Fetch user and question data in parallel
+        const [user, question] = yield Promise.all([
+            __1.prisma.user.findUnique({ where: { id: userId } }),
+            __1.prisma.question.findUnique({
+                where: { id: questionId },
+                include: { Answers: true }
+            })
+        ]);
         if (!user) {
             res.status(400).json({
-                "success": false,
-                "message": "invalid user id"
+                success: false,
+                message: "Invalid user ID"
             });
             return;
         }
-        const question = yield __1.prisma.question.findUnique({ where: { id: questionId }, include: {
-                Answers: true,
-            } });
         if (!question) {
-            // error resposne (400)
-            return;
-        }
-        const selectedAnswer = yield __1.prisma.answer.findUnique({ where: { id: selectedAnswerId } });
-        if (!selectedAnswer) {
-            // error resposne
-            return;
-        }
-        const selectedAnswerInQuestionAnswers = question.Answers.find((answer) => answer.id === selectedAnswer.id);
-        if (!selectedAnswerInQuestionAnswers) {
             res.status(400).json({
-                "success": false,
-                "message": "selected answer is not an option for the question"
+                success: false,
+                message: "Question not found"
             });
             return;
         }
-        const isAnswerCorrect = selectedAnswerInQuestionAnswers.isCorrect;
-        const questionDifficulty = question.difficulty;
-        let pointsEarned;
-        if (isAnswerCorrect) {
-            switch (questionDifficulty) {
-                case "EASY":
-                    pointsEarned = 10;
-                    break;
-                case "MEDIUM":
-                    pointsEarned = 15;
-                    break;
-                case "HARD":
-                    pointsEarned = 20;
-                    break;
-            }
-            // bonus point 
-            if (timeTaken <= 60) {
-                pointsEarned += 2;
-            }
+        const selectedAnswer = question.Answers.find(answer => answer.id === selectedAnswerId);
+        if (!selectedAnswer) {
+            res.status(400).json({
+                success: false,
+                message: "Selected answer is not an option for the question"
+            });
+            return;
         }
-        else {
-            pointsEarned = 0;
-        }
+        const pointsEarned = calculatePoints(selectedAnswer.isCorrect, question.difficulty, timeTaken);
         const questionResponse = yield __1.prisma.questionResponse.create({
             data: {
-                isCorrect: isAnswerCorrect,
-                pointsEarned: pointsEarned,
+                isCorrect: selectedAnswer.isCorrect,
+                pointsEarned,
                 responseTime: timeTaken,
                 chosenAnswerId: selectedAnswer.id,
                 questionId: question.id,
@@ -77,17 +64,26 @@ const answerQuestionHandler = (req, res) => __awaiter(void 0, void 0, void 0, fu
             }
         });
         res.status(201).json({
-            "success": true,
-            "message": "user responded to question successfully",
-            questionResponse,
+            success: true,
+            message: "Response recorded successfully",
+            questionResponse
         });
     }
     catch (error) {
-        console.log(error);
+        console.error("Error in answerQuestionHandler:", error);
         res.status(500).json({
-            "success": false,
-            "message": "internal server error when responding to question"
+            success: false,
+            message: "Internal server error when responding to question"
         });
     }
 });
 exports.answerQuestionHandler = answerQuestionHandler;
+const calculatePoints = (isCorrect, difficulty, timeTaken) => {
+    if (!isCorrect)
+        return 0;
+    let points = POINTS_MAP[difficulty];
+    if (timeTaken <= TIME_BONUS_THRESHOLD) {
+        points += TIME_BONUS_POINTS;
+    }
+    return points;
+};

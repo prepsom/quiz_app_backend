@@ -1,101 +1,98 @@
-import e, { Request, Response } from "express";
+import { Request, Response } from "express";
 import { prisma } from "..";
-import { Answer } from "@prisma/client";
-
+import { Answer} from "@prisma/client";
 
 type QuestionResponseRequestBody = {
-    selectedAnswerId:string; // answer to the question
-    questionId:string; // question user is answering
-    timeTaken:number; // in seconds
+    selectedAnswerId: string;
+    questionId: string;
+    timeTaken: number;
 }
 
+const POINTS_MAP: Record<string, number> = {
+    "EASY": 10,
+    "MEDIUM": 15,
+    "HARD": 20
+};
 
-const answerQuestionHandler = async (req:Request,res:Response) => {
+const TIME_BONUS_THRESHOLD = 60; // seconds
+const TIME_BONUS_POINTS = 2;
+
+const answerQuestionHandler = async (req: Request, res: Response) => {
     try {
-        const {questionId,selectedAnswerId,timeTaken} = req.body as QuestionResponseRequestBody;
+        const { questionId, selectedAnswerId, timeTaken } = req.body as QuestionResponseRequestBody;
         const userId = req.userId;
-    
-        const user = await prisma.user.findUnique({where:{id:userId}});
-        if(!user) {
-            res.status(400).json({
-                "success":false,
-                "message":"invalid user id"
+
+        // Fetch user and question data in parallel
+        const [user, question] = await Promise.all([
+            prisma.user.findUnique({ where: { id: userId } }),
+            prisma.question.findUnique({ 
+                where: { id: questionId },
+                include: { Answers: true }
             })
-            return;
-        }
-    
-        const question = await prisma.question.findUnique({where:{id:questionId},include:{
-            Answers:true,
-        }});
-        if(!question) {
-            // error resposne (400)
-            return;
-        }
-        const selectedAnswer = await prisma.answer.findUnique({where:{id:selectedAnswerId}});
-        if(!selectedAnswer) {
-            // error resposne
-            return;
-        }
-    
-        const selectedAnswerInQuestionAnswers = question.Answers.find((answer:Answer) => answer.id===selectedAnswer.id); 
-        if(!selectedAnswerInQuestionAnswers) {
+        ]);
+
+        if (!user) {
             res.status(400).json({
-                "success":false,
-                "message":"selected answer is not an option for the question"
-            })
+                success: false,
+                message: "Invalid user ID"
+            });
             return;
         }
-        const isAnswerCorrect = selectedAnswerInQuestionAnswers.isCorrect;
-        const questionDifficulty = question.difficulty;
-    
-        let pointsEarned:number;
-        if(isAnswerCorrect) {
-            
-            switch(questionDifficulty) {
-                case "EASY":
-                    pointsEarned = 10
-                    break;
-                case "MEDIUM":
-                    pointsEarned = 15
-                    break;
-                case "HARD":
-                    pointsEarned = 20
-                    break;
-            }
-    
-            // bonus point 
-            if(timeTaken <= 60)  {
-                pointsEarned+=2
-            }
-        } else {
-            pointsEarned = 0;
-        } 
-    
+
+        if (!question) {
+            res.status(400).json({
+                success: false,
+                message: "Question not found"
+            });
+            return;
+        }
+
+        const selectedAnswer = question.Answers.find(answer => answer.id === selectedAnswerId);
+        if (!selectedAnswer) {
+            res.status(400).json({
+                success: false,
+                message: "Selected answer is not an option for the question"
+            });
+            return;
+        }
+
+        const pointsEarned = calculatePoints(selectedAnswer.isCorrect, question.difficulty, timeTaken);
+
         const questionResponse = await prisma.questionResponse.create({
-            data:{
-                isCorrect:isAnswerCorrect,
-                pointsEarned:pointsEarned,
-                responseTime:timeTaken,
-                chosenAnswerId:selectedAnswer.id,
-                questionId:question.id,
-                responderId:user.id,
+            data: {
+                isCorrect: selectedAnswer.isCorrect,
+                pointsEarned,
+                responseTime: timeTaken,
+                chosenAnswerId: selectedAnswer.id,
+                questionId: question.id,
+                responderId: user.id,
             }
         });
+
         res.status(201).json({
-            "success":true,
-            "message":"user responded to question successfully",
-            questionResponse,
+            success: true,
+            message: "Response recorded successfully",
+            questionResponse
         });
+
     } catch (error) {
-        console.log(error);
+        console.error("Error in answerQuestionHandler:", error);
         res.status(500).json({
-            "success":false,
-            "message":"internal server error when responding to question"
+            success: false,
+            message: "Internal server error when responding to question"
         });
     }
 }
 
-
-export {
-    answerQuestionHandler,
+const calculatePoints = (isCorrect: boolean, difficulty: string, timeTaken: number): number => {
+    if (!isCorrect) return 0;
+    
+    let points = POINTS_MAP[difficulty];
+    if (timeTaken <= TIME_BONUS_THRESHOLD) {
+        points += TIME_BONUS_POINTS;
+    }
+    
+    return points;
 }
+
+export { answerQuestionHandler };

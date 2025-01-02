@@ -11,4 +11,5 @@ router.post("/", auth_middleware_1.authenticateUser, level_controller_1.addLevel
 router.get("/:subjectId", auth_middleware_1.authenticateUser, level_controller_1.getLevelsBySubjectHandler);
 router.delete("/:levelId", auth_middleware_1.authenticateUser, level_controller_1.deleteLevelHandler);
 router.put("/:levelId", auth_middleware_1.authenticateUser, level_controller_1.updateLevelHandler);
+router.get("/:levelId/results", auth_middleware_1.authenticateUser, level_controller_1.getLevelResultsHandler);
 exports.default = router;

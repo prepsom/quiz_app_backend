@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateLevelHandler = exports.deleteLevelHandler = exports.getLevelsBySubjectHandler = exports.addLevelHandler = void 0;
+exports.getLevelResultsHandler = exports.updateLevelHandler = exports.deleteLevelHandler = exports.getLevelsBySubjectHandler = exports.addLevelHandler = void 0;
 const __1 = require("..");
 const addLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     // who can add levels -> teachers 
@@ -220,3 +220,69 @@ const updateLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, funct
     }
 });
 exports.updateLevelHandler = updateLevelHandler;
+const getLevelResultsHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { levelId } = req.params;
+        const userId = req.userId;
+        // get results for questions answered in a level by the user 
+        const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            res.status(400).json({
+                "success": false,
+                "message": "invalid user id"
+            });
+            return;
+        }
+        const level = yield __1.prisma.level.findUnique({ where: { id: levelId } });
+        if (!level) {
+            res.status(400).json({
+                "success": false,
+                "message": "level not found"
+            });
+            return;
+        }
+        const responses = yield __1.prisma.questionResponse.findMany({
+            where: {
+                responderId: user.id,
+                question: {
+                    levelId: level.id,
+                }
+            },
+            include: {
+                question: true,
+            }
+        });
+        if (responses.length === 0) {
+            res.status(404).json({
+                "success": false,
+                "message": "No results found for this level"
+            });
+            return;
+        }
+        const result = {
+            totalPoints: responses.reduce((sum, r) => sum + r.pointsEarned, 0),
+            correctAnswers: responses.filter(r => r.isCorrect).length,
+            totalQuestions: responses.length,
+            questionResults: responses.map((r => {
+                return {
+                    question: r.question,
+                    isCorrect: r.isCorrect,
+                    pointsEarned: r.pointsEarned,
+                    responseTime: r.responseTime
+                };
+            }))
+        };
+        res.status(200).json({
+            success: true,
+            result
+        });
+    }
+    catch (error) {
+        console.error("Error in getLevelResultsHandler:", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error when fetching level results"
+        });
+    }
+});
+exports.getLevelResultsHandler = getLevelResultsHandler;
