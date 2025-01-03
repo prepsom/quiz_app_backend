@@ -9,5 +9,4 @@ const router = express.Router();
 
 router.post("/",authenticateUser,answerQuestionHandler);
 
-
 export default router;

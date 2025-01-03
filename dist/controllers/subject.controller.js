@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateSubjectHandler = exports.deleteSubjectHandler = exports.addSubjectByGradeHandler = exports.getSubjectsByGradeHandler = void 0;
+exports.getSubjectById = exports.updateSubjectHandler = exports.deleteSubjectHandler = exports.addSubjectByGradeHandler = exports.getSubjectsByGradeHandler = void 0;
 const __1 = require("..");
 const getSubjectsByGradeHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     // get auth userid from middleware
@@ -273,3 +273,25 @@ const updateSubjectHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
     }
 });
 exports.updateSubjectHandler = updateSubjectHandler;
+const getSubjectById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { subjectId } = req.params;
+        const subject = yield __1.prisma.subject.findUnique({ where: { id: subjectId } });
+        if (!subject) {
+            res.status(400).json({
+                "success": false,
+                "message": "subject not found"
+            });
+            return;
+        }
+        res.status(200).json({ "success": true, subject });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({
+            "success": false,
+            "message": "internal server error when getting subject"
+        });
+    }
+});
+exports.getSubjectById = getSubjectById;

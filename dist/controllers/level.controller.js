@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getLevelResultsHandler = exports.updateLevelHandler = exports.deleteLevelHandler = exports.getLevelsBySubjectHandler = exports.addLevelHandler = void 0;
+exports.getLevelQuestions = exports.getLevelResultsHandler = exports.updateLevelHandler = exports.deleteLevelHandler = exports.getLevelsBySubjectHandler = exports.addLevelHandler = void 0;
 const __1 = require("..");
 const addLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     // who can add levels -> teachers 
@@ -286,3 +286,91 @@ const getLevelResultsHandler = (req, res) => __awaiter(void 0, void 0, void 0, f
     }
 });
 exports.getLevelResultsHandler = getLevelResultsHandler;
+const getLevelQuestions = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { levelId } = req.params;
+        const userId = req.userId;
+        const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            res.status(400).json({
+                "success": false,
+                "message": "invalid user id"
+            });
+            return;
+        }
+        const level = yield __1.prisma.level.findUnique({ where: { id: levelId }, include: {
+                subject: true,
+            } });
+        if (!level) {
+            res.status(400).json({
+                "success": false,
+                "message": "level not  found"
+            });
+            return;
+        }
+        const gradeId = level.subject.gradeId;
+        if (user.role === "STUDENT") {
+            if (user.gradeId !== gradeId) {
+                res.status(401).json({
+                    "success": false,
+                    "message": "user not authorized to get questions for this grade"
+                });
+                return;
+            }
+        }
+        if (user.role === "TEACHER") {
+            // 
+            const teachesGrade = yield __1.prisma.teacherGrade.findFirst({ where: { teacherId: user.id, gradeId: gradeId } });
+            if (!teachesGrade) {
+                res.status(401).json({
+                    "success": false,
+                    "message": "teacher not authorized to get questions for this grade"
+                });
+                return;
+            }
+        }
+        // get all questions in a level and the question id's user has made responses to
+        const allQuestions = yield __1.prisma.question.findMany({ where: { levelId: level.id } });
+        const answeredQuestions = yield __1.prisma.question.findMany({
+            where: { levelId: level.id, QuestionResponse: {
+                    some: {
+                        responderId: user.id,
+                    }
+                } },
+            include: {
+                QuestionResponse: {
+                    select: {
+                        pointsEarned: true,
+                        responderId: true,
+                    }
+                }
+            }
+        });
+        let currentPointsEarnedInLevel = 0;
+        for (let i = 0; i < answeredQuestions.length; i++) {
+            const answeredQuestionResponses = answeredQuestions[i].QuestionResponse;
+            for (let k = 0; k < answeredQuestionResponses.length; k++) {
+                if (answeredQuestionResponses[k].responderId === user.id) {
+                    currentPointsEarnedInLevel = currentPointsEarnedInLevel + answeredQuestionResponses[k].pointsEarned;
+                    break;
+                }
+            }
+        }
+        console.log(currentPointsEarnedInLevel);
+        const answeredQuestionIds = answeredQuestions.map((question) => question.id);
+        res.status(200).json({
+            "success": true,
+            allQuestions,
+            answeredQuestionIds,
+            "currentPointsInLevel": currentPointsEarnedInLevel,
+        });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({
+            "success": false,
+            "message": "internal server error when getting questions for a level"
+        });
+    }
+});
+exports.getLevelQuestions = getLevelQuestions;

@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getQuestionWithAnswers = exports.deleteQuestionHandler = exports.addQuestionByLevelHandler = exports.getQuestionsByLevelHandler = void 0;
+exports.getAnsweredQuestionsByLevelHandler = exports.getQuestionWithAnswers = exports.deleteQuestionHandler = exports.addQuestionByLevelHandler = exports.getQuestionsByLevelHandler = void 0;
 const __1 = require("..");
 const getQuestionsByLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     // levelId and userId
@@ -254,3 +254,47 @@ const getQuestionWithAnswers = (req, res) => __awaiter(void 0, void 0, void 0, f
     }
 });
 exports.getQuestionWithAnswers = getQuestionWithAnswers;
+const getAnsweredQuestionsByLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { levelId } = req.params;
+        const userId = req.userId;
+        // get questions which have questionResponses by the user with id=userId and is in the level
+        const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            res.status(400).json({
+                "success": false,
+                "message": "invalid user id"
+            });
+            return;
+        }
+        const level = yield __1.prisma.level.findUnique({ where: { id: levelId } });
+        if (!level) {
+            res.status(400).json({
+                "success": false,
+                "message": "level not found"
+            });
+            return;
+        }
+        // get questions which have responses by the user and in the level with id = level.id
+        const answeredQuestions = yield __1.prisma.question.findMany({ where: {
+                levelId: level.id,
+                QuestionResponse: {
+                    some: {
+                        responderId: user.id,
+                    }
+                }
+            } });
+        res.status(200).json({
+            "success": true,
+            "answeredQuestions": answeredQuestions,
+        });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({
+            "success": false,
+            "message": "internal server error when getting answered questions"
+        });
+    }
+});
+exports.getAnsweredQuestionsByLevelHandler = getAnsweredQuestionsByLevelHandler;

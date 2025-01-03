@@ -278,9 +278,58 @@ const getQuestionWithAnswers = async (req:Request,res:Response) => {
 }
 
 
+const getAnsweredQuestionsByLevelHandler = async (req:Request,res:Response) => {
+    try {
+        const {levelId} = req.params as {levelId:string};
+        const userId = req.userId;
+        
+        // get questions which have questionResponses by the user with id=userId and is in the level
+        const user = await prisma.user.findUnique({where:{id:userId}});
+        if(!user) {
+            res.status(400).json({
+                "success":false,
+                "message":"invalid user id"
+            })    
+            return;
+        }
+    
+        const level = await prisma.level.findUnique({where:{id:levelId}});
+        if(!level) {
+            res.status(400).json({
+                "success":false,
+                "message":"level not found"
+            });
+            return;
+        }
+    
+        // get questions which have responses by the user and in the level with id = level.id
+        const answeredQuestions = await prisma.question.findMany({where:{
+            levelId:level.id,
+            QuestionResponse:{
+                some:{
+                    responderId:user.id,
+                }
+            }
+        }});
+    
+        res.status(200).json({
+            "success":true,
+            "answeredQuestions":answeredQuestions,
+        });
+    
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            "success":false,
+            "message":"internal server error when getting answered questions"
+        });
+    }
+}
+
 export  {
     getQuestionsByLevelHandler,
     addQuestionByLevelHandler,
     deleteQuestionHandler,
     getQuestionWithAnswers,
+    getAnsweredQuestionsByLevelHandler,
 }

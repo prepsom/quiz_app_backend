@@ -297,9 +297,32 @@ const updateSubjectHandler = async (req:Request,res:Response) => {
     }
 }
 
+const getSubjectById = async (req:Request,res:Response) => {
+    try {
+        const {subjectId} = req.params as {subjectId:string};
+        const subject = await prisma.subject.findUnique({where:{id:subjectId}});
+        if(!subject) {
+            res.status(400).json({
+                "success":false,
+                "message":"subject not found"
+            });
+            return;
+        }
+    
+        res.status(200).json({"success":true,subject});
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            "success":false,
+            "message":"internal server error when getting subject"
+        })
+    }
+}
+
 export {
     getSubjectsByGradeHandler,
     addSubjectByGradeHandler,
     deleteSubjectHandler,
     updateSubjectHandler,
+    getSubjectById,
 }
