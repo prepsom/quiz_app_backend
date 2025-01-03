@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getLevelQuestions = exports.getLevelResultsHandler = exports.updateLevelHandler = exports.deleteLevelHandler = exports.getLevelsBySubjectHandler = exports.addLevelHandler = void 0;
+exports.getCompletedLevelsBySubjectHandler = exports.completeLevelHandler = exports.getLevelById = exports.getLevelQuestions = exports.getLevelResultsHandler = exports.updateLevelHandler = exports.deleteLevelHandler = exports.getLevelsBySubjectHandler = exports.addLevelHandler = void 0;
 const __1 = require("..");
 const addLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     // who can add levels -> teachers 
@@ -374,3 +374,142 @@ const getLevelQuestions = (req, res) => __awaiter(void 0, void 0, void 0, functi
     }
 });
 exports.getLevelQuestions = getLevelQuestions;
+const getLevelById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { levelId } = req.params;
+        const level = yield __1.prisma.level.findUnique({ where: { id: levelId } });
+        if (!level) {
+            res.status(400).json({
+                "success": false,
+                "message": "level not found"
+            });
+            return;
+        }
+        res.status(200).json({ "success": true, level });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({
+            "success": false,
+            "message": "internal server error when getting level by id"
+        });
+    }
+});
+exports.getLevelById = getLevelById;
+const completeLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    // logic for this handler
+    // authenticated user making this request to complete this level
+    // before he/she completes this level , we will have to check their responses to the questions in this level
+    // if noOfCorrectQuestions / totalQuestionsInLevel * 100 > 50% -> level complete else not 
+    try {
+        const { levelId } = req.params;
+        const userId = req.userId;
+        const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            res.status(400).json({
+                "success": false,
+                "message": "invalid user id"
+            });
+            return;
+        }
+        const level = yield __1.prisma.level.findUnique({ where: { id: levelId }, include: {
+                Questions: {
+                    select: {
+                        QuestionResponse: true,
+                    }
+                },
+            } });
+        if (!level) {
+            res.status(400).json({
+                "success": false,
+                "message": "level not found"
+            });
+            return;
+        }
+        const totatQuestionsInLevel = level.Questions.length;
+        let noOfCorrectQuestions = 0;
+        let totalPointsEarnedInLevel = 0;
+        for (let i = 0; i < totatQuestionsInLevel; i++) {
+            const questionResponse = level.Questions[i].QuestionResponse
+                .find((questionResponse) => questionResponse.responderId === user.id);
+            if (!questionResponse) {
+                continue;
+            }
+            if (questionResponse.isCorrect) {
+                noOfCorrectQuestions++;
+            }
+            totalPointsEarnedInLevel += questionResponse.pointsEarned;
+        }
+        let isComplete = false;
+        const percentage = (noOfCorrectQuestions / totatQuestionsInLevel) * 100;
+        if (percentage > 50) {
+            isComplete = true;
+        }
+        if (!isComplete) {
+            res.status(400).json({
+                "success": false,
+                "message": "user cannot complete this level.Get better"
+            });
+            return;
+        }
+        yield __1.prisma.userLevelComplete.create({ data: { userId: user.id, levelId: level.id, totalPoints: totalPointsEarnedInLevel } });
+        res.status(201).json({
+            "success": true,
+            "message": "level completed",
+            "noOfCorrectQuestions": noOfCorrectQuestions,
+            "totalQuestions": totatQuestionsInLevel,
+            "percentage": percentage,
+            "isComplete": isComplete,
+        });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({
+            "success": false,
+            "message": "internal server error when completing level "
+        });
+    }
+});
+exports.completeLevelHandler = completeLevelHandler;
+const getCompletedLevelsBySubjectHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { subjectId } = req.params;
+        const userId = req.userId;
+        const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            res.status(400).json({
+                "success": false,
+                "message": "invalid user id"
+            });
+            return;
+        }
+        const subject = yield __1.prisma.subject.findUnique({ where: { id: subjectId } });
+        if (!subject) {
+            res.status(400).json({
+                "success": false,
+                "message": "subject not found"
+            });
+            return;
+        }
+        // completed levels ,
+        let completedLevelsByUser = yield __1.prisma.userLevelComplete.findMany({ where: { userId: user.id }, include: {
+                level: true,
+            } });
+        // completedLevelsByUser -> includes all levels completed by user regardless of subject
+        // allLevelsInSubject -> all levels in a subject duh
+        let completedLevelsByUserInSubject = completedLevelsByUser.filter((completedLevel) => completedLevel.level.subjectId === subject.id)
+            .map((completedLevel) => completedLevel.level);
+        res.status(200).json({
+            "success": true,
+            "completedLevels": completedLevelsByUserInSubject,
+        });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({
+            "success": false,
+            "message": "internal server error when getting completed levels"
+        });
+    }
+});
+exports.getCompletedLevelsBySubjectHandler = getCompletedLevelsBySubjectHandler;

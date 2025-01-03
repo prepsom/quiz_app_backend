@@ -19,19 +19,20 @@ model Grade {
 }
 
 model User {
-  id                String             @id @default(uuid())
-  email             String             @unique
+  id                String              @id @default(uuid())
+  email             String              @unique
   name              String?
   password          String
-  role              Role               @default(STUDENT)
-  createdAt         DateTime           @default(now())
-  avatar            Avatar             @default(MALE)
+  role              Role                @default(STUDENT)
+  createdAt         DateTime            @default(now())
+  avatar            Avatar              @default(MALE)
   // Only for students
-  grade             Grade?             @relation("StudentGrade", fields: [gradeId], references: [id], onDelete: Cascade)
+  grade             Grade?              @relation("StudentGrade", fields: [gradeId], references: [id], onDelete: Cascade)
   gradeId           String?
   // Only for teachers
   teacherGrades     TeacherGrade[]
   QuestionResponses QuestionResponse[]
+  UserLevelComplete UserLevelComplete[]
 }
 
 // Junction table for Teacher-Grade many-to-many relationship
@@ -55,13 +56,14 @@ model Subject {
 }
 
 model Level {
-  id               String     @id @default(uuid())
-  levelName        String
-  levelDescription String?
-  position         Int        @default(0)
-  subject          Subject    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  subjectId        String
-  Questions        Question[]
+  id                String              @id @default(uuid())
+  levelName         String
+  levelDescription  String?
+  position          Int                 @default(0)
+  subject           Subject             @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subjectId         String
+  Questions         Question[]
+  UserLevelComplete UserLevelComplete[]
 }
 
 model Question {
@@ -99,6 +101,17 @@ model QuestionResponse {
   createdAt      DateTime @default(now())
 
   @@unique([responderId, questionId])
+}
+
+model UserLevelComplete {
+  id          String @id @default(uuid())
+  user        User   @relation(fields: [userId], references: [id])
+  userId      String
+  level       Level  @relation(fields: [levelId], references: [id])
+  levelId     String
+  totalPoints Int
+
+  @@unique([userId, levelId])
 }
 
 enum Role {

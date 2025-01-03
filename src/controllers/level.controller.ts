@@ -433,6 +433,156 @@ const getLevelQuestions = async (req:Request,res:Response) => {
 }
 
 
+const getLevelById = async (req:Request,res:Response) => {
+    try {
+        const {levelId} = req.params as {levelId:string};
+        const level = await prisma.level.findUnique({where:{id:levelId}});
+        if(!level) {
+            res.status(400).json({
+                "success":false,
+                "message":"level not found"
+            })
+            return;
+        }
+    
+        res.status(200).json({"success":true,level});
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            "success":false,
+            "message":"internal server error when getting level by id"
+        })
+    }
+
+}
+
+const completeLevelHandler = async (req:Request,res:Response) => {
+    // logic for this handler
+    // authenticated user making this request to complete this level
+    // before he/she completes this level , we will have to check their responses to the questions in this level
+    // if noOfCorrectQuestions / totalQuestionsInLevel * 100 > 50% -> level complete else not 
+    try {
+        const {levelId} = req.params as {levelId:string};
+        const userId = req.userId;
+    
+        const user = await prisma.user.findUnique({where:{id:userId}});
+        if(!user) {
+            res.status(400).json({
+                "success":false,
+                "message":"invalid user id"
+            })
+            return;
+        }
+    
+        const level = await prisma.level.findUnique({where:{id:levelId},include:{
+            Questions:{
+                select:{
+                    QuestionResponse:true,
+                }
+            },
+        }});
+        if(!level) {
+            res.status(400).json({
+                "success":false,
+                "message":"level not found"
+            });
+            return;
+        }
+    
+        const totatQuestionsInLevel = level.Questions.length;
+        let noOfCorrectQuestions = 0;
+        let totalPointsEarnedInLevel = 0;
+        for(let i=0;i<totatQuestionsInLevel;i++) {
+            const questionResponse = level.Questions[i].QuestionResponse
+            .find((questionResponse) => questionResponse.responderId===user.id);
+            if(!questionResponse) {
+                continue;
+            }
+            if(questionResponse.isCorrect) {
+                noOfCorrectQuestions++;
+            }
+            totalPointsEarnedInLevel+=questionResponse.pointsEarned;
+        }
+    
+    
+        let isComplete = false;
+        const percentage = (noOfCorrectQuestions / totatQuestionsInLevel) * 100;
+        if(percentage > 50) {
+            isComplete=true;
+        }
+    
+        if(!isComplete) {
+            res.status(400).json({
+                "success":false,
+                "message":"user cannot complete this level.Get better"
+            })
+            return;
+        }
+    
+        await prisma.userLevelComplete.create({data:{userId:user.id,levelId:level.id,totalPoints:totalPointsEarnedInLevel}});
+        res.status(201).json({
+            "success":true,
+            "message":"level completed",
+            "noOfCorrectQuestions":noOfCorrectQuestions,
+            "totalQuestions":totatQuestionsInLevel,
+            "percentage":percentage,
+            "isComplete":isComplete,
+        });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            "success":false,
+            "message":"internal server error when completing level "
+        });
+    }
+}
+
+const getCompletedLevelsBySubjectHandler = async (req:Request,res:Response) => {
+    try {
+        const {subjectId} = req.params as {subjectId:string};
+        const userId = req.userId;
+    
+        const user = await prisma.user.findUnique({where:{id:userId}});
+        if(!user) {
+            res.status(400).json({
+                "success":false,
+                "message":"invalid user id"
+            })
+            return;
+        }
+    
+        const subject = await prisma.subject.findUnique({where:{id:subjectId}});
+        if(!subject) {
+            res.status(400).json({
+                "success":false,
+                "message":"subject not found"
+            });
+            return;
+        }
+    
+        // completed levels ,
+        let completedLevelsByUser = await prisma.userLevelComplete.findMany({where:{userId:user.id},include:{
+            level:true,
+        }});
+        
+        // completedLevelsByUser -> includes all levels completed by user regardless of subject
+        // allLevelsInSubject -> all levels in a subject duh
+        let completedLevelsByUserInSubject = 
+        completedLevelsByUser.filter((completedLevel) => completedLevel.level.subjectId===subject.id)
+        .map((completedLevel) => completedLevel.level);
+    
+        res.status(200).json({
+            "success":true,
+            "completedLevels":completedLevelsByUserInSubject,
+        });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            "success":false,
+            "message":"internal server error when getting completed levels"
+        });
+    }
+}
 
 export {
     addLevelHandler,
@@ -441,4 +591,7 @@ export {
     updateLevelHandler,
     getLevelResultsHandler,
     getLevelQuestions,
+    getLevelById,
+    completeLevelHandler,
+    getCompletedLevelsBySubjectHandler,
 }
