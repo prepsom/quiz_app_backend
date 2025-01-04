@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getTotalPointsHandler = void 0;
+exports.getLeaderBoardHandler = exports.getTotalPointsHandler = void 0;
 const __1 = require("..");
 const getTotalPointsHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -43,3 +43,58 @@ const getTotalPointsHandler = (req, res) => __awaiter(void 0, void 0, void 0, fu
     }
 });
 exports.getTotalPointsHandler = getTotalPointsHandler;
+const getLeaderBoardHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const userId = req.userId;
+        // ^ user making the request
+        // we want rankings of the users that is in the same grade as the authenticated user
+        const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            res.status(400).json({
+                "success": false,
+                "message": "invalid user id"
+            });
+            return;
+        }
+        const gradeId = user.gradeId; // NEED USERS IN THIS GRADE ALONG WITH THEIR TOTAL POINTS
+        const users = yield __1.prisma.user.findMany({ where: { gradeId: gradeId }, include: {
+                UserLevelComplete: {
+                    select: {
+                        totalPoints: true,
+                    }
+                }
+            } });
+        let usersWithTotalPoints = [];
+        for (let i = 0; i < users.length; i++) {
+            let user = users[i];
+            let sum = 0;
+            for (let k = 0; k < user.UserLevelComplete.length; k++) {
+                sum = sum + user.UserLevelComplete[k].totalPoints;
+            }
+            usersWithTotalPoints.push({
+                user: {
+                    email: user.email,
+                    avatar: user.avatar,
+                    createdAt: user.createdAt,
+                    gradeId: user.gradeId,
+                    id: user.id,
+                    name: user.name,
+                    password: user.password,
+                    role: user.role,
+                },
+                totalPoints: sum,
+            });
+            // get total points for each user after the loop above
+        }
+        usersWithTotalPoints.sort((a, b) => b.totalPoints - a.totalPoints);
+        res.status(200).json({
+            "success": true,
+            usersWithTotalPoints,
+        });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({ "success": false, "message": "internal server error when getting leaderboard" });
+    }
+});
+exports.getLeaderBoardHandler = getLeaderBoardHandler;
