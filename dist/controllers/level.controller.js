@@ -330,9 +330,9 @@ const getLevelQuestions = (req, res) => __awaiter(void 0, void 0, void 0, functi
             }
         }
         // get all questions in a level and the question id's user has made responses to
-        const allQuestions = yield __1.prisma.question.findMany({ where: { levelId: level.id } });
+        const allQuestions = yield __1.prisma.question.findMany({ where: { levelId: level.id, ready: true } });
         const answeredQuestions = yield __1.prisma.question.findMany({
-            where: { levelId: level.id, QuestionResponse: {
+            where: { levelId: level.id, ready: true, QuestionResponse: {
                     some: {
                         responderId: user.id,
                     }
@@ -414,6 +414,7 @@ const completeLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
         }
         const level = yield __1.prisma.level.findUnique({ where: { id: levelId }, include: {
                 Questions: {
+                    where: { ready: true },
                     select: {
                         QuestionResponse: true,
                     }
@@ -443,6 +444,7 @@ const completeLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
         }
         let isComplete = false;
         const percentage = (noOfCorrectQuestions / totatQuestionsInLevel) * 100;
+        console.log('percentage :- ', percentage);
         if (percentage > 50) {
             isComplete = true;
         }

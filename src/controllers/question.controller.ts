@@ -60,7 +60,7 @@ const getQuestionsByLevelHandler = async (req:Request,res:Response) => {
             }
         }
     
-        const questions = await prisma.question.findMany({where:{levelId:level.id}});
+        const questions = await prisma.question.findMany({where:{levelId:level.id,ready:true}});
         res.status(200).json({
             "success":true,
             questions,
@@ -305,6 +305,7 @@ const getAnsweredQuestionsByLevelHandler = async (req:Request,res:Response) => {
         // get questions which have responses by the user and in the level with id = level.id
         const answeredQuestions = await prisma.question.findMany({where:{
             levelId:level.id,
+            ready:true,
             QuestionResponse:{
                 some:{
                     responderId:user.id,

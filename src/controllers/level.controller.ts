@@ -384,9 +384,9 @@ const getLevelQuestions = async (req:Request,res:Response) => {
         }
         
         // get all questions in a level and the question id's user has made responses to
-        const allQuestions = await prisma.question.findMany({where:{levelId:level.id}});
+        const allQuestions = await prisma.question.findMany({where:{levelId:level.id,ready:true}});
         const answeredQuestions = await prisma.question.findMany({
-            where:{levelId:level.id,QuestionResponse:{
+            where:{levelId:level.id,ready:true,QuestionResponse:{
                 some:{
                     responderId:user.id,
                 }
@@ -453,14 +453,9 @@ const getLevelById = async (req:Request,res:Response) => {
             "message":"internal server error when getting level by id"
         })
     }
-
 }
 
 const completeLevelHandler = async (req:Request,res:Response) => {
-    // logic for this handler
-    // authenticated user making this request to complete this level
-    // before he/she completes this level , we will have to check their responses to the questions in this level
-    // if noOfCorrectQuestions / totalQuestionsInLevel * 100 > 50% -> level complete else not 
     try {
         const {levelId} = req.params as {levelId:string};
         const userId = req.userId;
@@ -476,6 +471,7 @@ const completeLevelHandler = async (req:Request,res:Response) => {
     
         const level = await prisma.level.findUnique({where:{id:levelId},include:{
             Questions:{
+                where:{ready:true},
                 select:{
                     QuestionResponse:true,
                 }
@@ -509,6 +505,7 @@ const completeLevelHandler = async (req:Request,res:Response) => {
     
         let isComplete = false;
         const percentage = (noOfCorrectQuestions / totatQuestionsInLevel) * 100;
+        console.log('percentage :- ' , percentage);
         if(percentage > 50) {
             isComplete=true;
         }
@@ -534,8 +531,8 @@ const completeLevelHandler = async (req:Request,res:Response) => {
             return;
         }
 
-    
         await prisma.userLevelComplete.create({data:{userId:user.id,levelId:level.id,totalPoints:totalPointsEarnedInLevel}});
+        
         res.status(201).json({
             "success":true,
             "message":"level completed",
