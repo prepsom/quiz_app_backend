@@ -488,7 +488,9 @@ const completeLevelHandler = async (req:Request,res:Response) => {
             });
             return;
         }
-    
+
+        // check if level already completed by user
+
         const totatQuestionsInLevel = level.Questions.length;
         let noOfCorrectQuestions = 0;
         let totalPointsEarnedInLevel = 0;
@@ -518,6 +520,20 @@ const completeLevelHandler = async (req:Request,res:Response) => {
             })
             return;
         }
+
+        const isLevelComplete = await prisma.userLevelComplete.findFirst({where:{userId:user.id,levelId:level.id}});
+        if(isLevelComplete) {
+            res.status(200).json({
+                "success":true,
+                "message":"level completed",
+                "noOfCorrectQuestions":noOfCorrectQuestions,
+                "totalQuestions":totatQuestionsInLevel,
+                "percentage":percentage,
+                "isComplete":isComplete,
+            });
+            return;
+        }
+
     
         await prisma.userLevelComplete.create({data:{userId:user.id,levelId:level.id,totalPoints:totalPointsEarnedInLevel}});
         res.status(201).json({
