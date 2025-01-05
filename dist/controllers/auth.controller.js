@@ -53,6 +53,10 @@ const loginHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* (
         const token = jsonwebtoken_1.default.sign({ userId: user.id }, process.env.JWT_SECRET, {
             expiresIn: "2d",
         });
+        // user has logged in -> update last login
+        yield __1.prisma.user.update({ where: { id: user.id }, data: {
+                lastLogin: new Date(Date.now()),
+            } });
         res.cookie("auth_token", token, {
             httpOnly: true,
             path: "/",

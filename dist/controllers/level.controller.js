@@ -15,7 +15,7 @@ const addLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, function
     // who can add levels -> teachers 
     try {
         const userId = req.userId;
-        const { levelName, subjectId } = req.body;
+        const { levelName, subjectId, passingQuestions } = req.body;
         const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
         if (!user || user.role === "STUDENT") {
             res.status(400).json({
@@ -43,6 +43,13 @@ const addLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, function
                 return;
             }
         }
+        if (passingQuestions < 0) {
+            res.status(400).json({
+                "success": false,
+                "message": "passing questions cannot be negative"
+            });
+            return;
+        }
         // teacher can add a level 
         const highestPosition = yield __1.prisma.level.findMany({ where: { subjectId: subject.id }, orderBy: {
                 position: "desc"
@@ -50,7 +57,8 @@ const addLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, function
         const newLevel = yield __1.prisma.level.create({ data: {
                 levelName: levelName,
                 position: highestPosition + 1,
-                subjectId: subject.id
+                subjectId: subject.id,
+                passingQuestions: passingQuestions,
             } });
         res.status(201).json({
             success: true,
@@ -397,10 +405,6 @@ const getLevelById = (req, res) => __awaiter(void 0, void 0, void 0, function* (
 });
 exports.getLevelById = getLevelById;
 const completeLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    // logic for this handler
-    // authenticated user making this request to complete this level
-    // before he/she completes this level , we will have to check their responses to the questions in this level
-    // if noOfCorrectQuestions / totalQuestionsInLevel * 100 > 50% -> level complete else not 
     try {
         const { levelId } = req.params;
         const userId = req.userId;
@@ -428,12 +432,20 @@ const completeLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
             return;
         }
         // check if level already completed by user
-        const totatQuestionsInLevel = level.Questions.length;
+        const totalQuestionsInLevel = level.Questions.length;
+        if (totalQuestionsInLevel === 0) {
+            res.status(400).json({
+                "success": false,
+                "message": "no questions in level, user cannot complete level"
+            });
+            return;
+        }
         let noOfCorrectQuestions = 0;
         let totalPointsEarnedInLevel = 0;
-        for (let i = 0; i < totatQuestionsInLevel; i++) {
+        for (let i = 0; i < totalQuestionsInLevel; i++) {
             const questionResponse = level.Questions[i].QuestionResponse
                 .find((questionResponse) => questionResponse.responderId === user.id);
+            console.log(questionResponse);
             if (!questionResponse) {
                 continue;
             }
@@ -443,9 +455,8 @@ const completeLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
             totalPointsEarnedInLevel += questionResponse.pointsEarned;
         }
         let isComplete = false;
-        const percentage = (noOfCorrectQuestions / totatQuestionsInLevel) * 100;
-        console.log('percentage :- ', percentage);
-        if (percentage > 50) {
+        const percentage = Math.fround(((noOfCorrectQuestions) / (totalQuestionsInLevel)) * 100);
+        if (noOfCorrectQuestions > level.passingQuestions) {
             isComplete = true;
         }
         if (!isComplete) {
@@ -455,27 +466,42 @@ const completeLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
             });
             return;
         }
-        const isLevelComplete = yield __1.prisma.userLevelComplete.findFirst({ where: { userId: user.id, levelId: level.id } });
-        if (isLevelComplete) {
+        const completedLevel = yield __1.prisma.userLevelComplete.findFirst({ where: { userId: user.id, levelId: level.id } });
+        if (completedLevel) {
+            // is level is already completed by user i.e user has passed this level 
+            // if the points earned by user in completing this level currently > prev points earned 
+            //  update the entry in the userLevelComplete table
+            // else  do nothing and return success response for completing the level with 200 OK as no new 
+            if (totalPointsEarnedInLevel > completedLevel.totalPoints) {
+                yield __1.prisma.userLevelComplete.update({ where: { id: completedLevel.id }, data: {
+                        totalPoints: totalPointsEarnedInLevel,
+                    } });
+            }
+            if (noOfCorrectQuestions > completedLevel.noOfCorrectQuestions) {
+                yield __1.prisma.userLevelComplete.update({ where: { id: completedLevel.id }, data: {
+                        noOfCorrectQuestions: noOfCorrectQuestions,
+                    } });
+            }
             res.status(200).json({
                 "success": true,
-                "message": "level completed",
+                "message": "Level Completed",
                 "noOfCorrectQuestions": noOfCorrectQuestions,
-                "totalQuestions": totatQuestionsInLevel,
+                "totalQuestions": totalQuestionsInLevel,
                 "percentage": percentage,
                 "isComplete": isComplete,
             });
-            return;
         }
-        yield __1.prisma.userLevelComplete.create({ data: { userId: user.id, levelId: level.id, totalPoints: totalPointsEarnedInLevel } });
-        res.status(201).json({
-            "success": true,
-            "message": "level completed",
-            "noOfCorrectQuestions": noOfCorrectQuestions,
-            "totalQuestions": totatQuestionsInLevel,
-            "percentage": percentage,
-            "isComplete": isComplete,
-        });
+        else {
+            yield __1.prisma.userLevelComplete.create({ data: { userId: user.id, levelId: level.id, totalPoints: totalPointsEarnedInLevel, noOfCorrectQuestions: noOfCorrectQuestions } });
+            res.status(201).json({
+                "success": true,
+                "message": "Level completed",
+                "noOfCorrectQuestions": noOfCorrectQuestions,
+                "totalQuestions": totalQuestionsInLevel,
+                "percentage": percentage,
+                "isComplete": isComplete,
+            });
+        }
     }
     catch (error) {
         console.log(error);
@@ -514,6 +540,8 @@ const getCompletedLevelsBySubjectHandler = (req, res) => __awaiter(void 0, void 
         // allLevelsInSubject -> all levels in a subject duh
         let completedLevelsByUserInSubject = completedLevelsByUser.filter((completedLevel) => completedLevel.level.subjectId === subject.id)
             .map((completedLevel) => completedLevel.level);
+        // sort by position 
+        completedLevelsByUserInSubject = completedLevelsByUserInSubject.sort((a, b) => a.position - b.position);
         res.status(200).json({
             "success": true,
             "completedLevels": completedLevelsByUserInSubject,

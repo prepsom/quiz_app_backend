@@ -53,21 +53,40 @@ const answerQuestionHandler = (req, res) => __awaiter(void 0, void 0, void 0, fu
             return;
         }
         const pointsEarned = calculatePoints(selectedAnswer.isCorrect, question.difficulty, timeTaken);
-        const questionResponse = yield __1.prisma.questionResponse.create({
-            data: {
-                isCorrect: selectedAnswer.isCorrect,
-                pointsEarned,
-                responseTime: timeTaken,
-                chosenAnswerId: selectedAnswer.id,
-                questionId: question.id,
-                responderId: user.id,
-            }
-        });
-        res.status(201).json({
-            success: true,
-            message: "Response recorded successfully",
-            questionResponse
-        });
+        // if a questionResponse by the user to this question already exists -> update the record with the new selectedAnswer and isCorrect field
+        // else create a questionResponse
+        const questionResponse = yield __1.prisma.questionResponse.findFirst({ where: { responderId: user.id, questionId: question.id } });
+        if (questionResponse) {
+            const updatedResponse = yield __1.prisma.questionResponse.update({ where: { id: questionResponse.id }, data: {
+                    isCorrect: selectedAnswer.isCorrect,
+                    chosenAnswerId: selectedAnswer.id,
+                    pointsEarned: pointsEarned,
+                    createdAt: new Date(Date.now()),
+                    responseTime: timeTaken,
+                } });
+            res.status(200).json({
+                success: true,
+                message: "Response recorded successfully",
+                questionResponse: updatedResponse,
+            });
+        }
+        else {
+            const newResponse = yield __1.prisma.questionResponse.create({
+                data: {
+                    isCorrect: selectedAnswer.isCorrect,
+                    pointsEarned,
+                    responseTime: timeTaken,
+                    chosenAnswerId: selectedAnswer.id,
+                    questionId: question.id,
+                    responderId: user.id,
+                }
+            });
+            res.status(201).json({
+                success: true,
+                message: "Response recorded successfully",
+                questionResponse: newResponse,
+            });
+        }
     }
     catch (error) {
         console.error("Error in answerQuestionHandler:", error);

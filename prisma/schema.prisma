@@ -33,6 +33,7 @@ model User {
   teacherGrades     TeacherGrade[]
   QuestionResponses QuestionResponse[]
   UserLevelComplete UserLevelComplete[]
+  lastLogin         DateTime?
 }
 
 // Junction table for Teacher-Grade many-to-many relationship
@@ -64,6 +65,7 @@ model Level {
   subjectId         String
   Questions         Question[]
   UserLevelComplete UserLevelComplete[]
+  passingQuestions  Int                 @default(0)
 }
 
 model Question {
@@ -104,12 +106,13 @@ model QuestionResponse {
 }
 
 model UserLevelComplete {
-  id          String @id @default(uuid())
-  user        User   @relation(fields: [userId], references: [id])
-  userId      String
-  level       Level  @relation(fields: [levelId], references: [id])
-  levelId     String
-  totalPoints Int
+  id                   String @id @default(uuid())
+  user                 User   @relation(fields: [userId], references: [id])
+  userId               String
+  level                Level  @relation(fields: [levelId], references: [id])
+  levelId              String
+  totalPoints          Int
+  noOfCorrectQuestions Int
 
   @@unique([userId, levelId])
 }

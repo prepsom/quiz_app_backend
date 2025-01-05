@@ -51,6 +51,12 @@ const loginHandler = async (req:Request,res:Response) => {
         expiresIn:"2d",
     });
 
+
+    // user has logged in -> update last login
+    await prisma.user.update({where:{id:user.id},data:{
+        lastLogin:new Date(Date.now()),
+    }});
+    
     res.cookie("auth_token",token,{
         httpOnly:true,
         path:"/",

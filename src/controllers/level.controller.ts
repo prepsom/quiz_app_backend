@@ -6,6 +6,7 @@ import { $Enums, Question } from "@prisma/client";
 type AddLevelRequestBody = {
     levelName:string;
     subjectId:string;
+    passingQuestions:number;
 }
 
 type UpdateLevelRequestBody = {
@@ -17,7 +18,7 @@ const addLevelHandler = async (req:Request,res:Response) =>  {
     // who can add levels -> teachers 
     try {
         const userId = req.userId;
-        const {levelName,subjectId} = req.body as AddLevelRequestBody;
+        const {levelName,subjectId,passingQuestions} = req.body as AddLevelRequestBody;
         const user = await prisma.user.findUnique({where:{id:userId}});
         
         if(!user || user.role==="STUDENT") {
@@ -48,16 +49,25 @@ const addLevelHandler = async (req:Request,res:Response) =>  {
                 return;
             }
         }
-    
+
+        if(passingQuestions < 0) {
+            res.status(400).json({
+                "success":false,
+                "message":"passing questions cannot be negative"
+            })
+            return;
+        }
+
         // teacher can add a level 
         const highestPosition = await prisma.level.findMany({where:{subjectId:subject.id},orderBy:{
             position:"desc"
         },take:1}).then(levels => levels[0]?.position ?? -1);
-    
+
         const newLevel = await prisma.level.create({data:{
             levelName:levelName,
             position:highestPosition+1,
-            subjectId:subject.id
+            subjectId:subject.id,
+            passingQuestions:passingQuestions,
         }});
     
     
@@ -487,12 +497,22 @@ const completeLevelHandler = async (req:Request,res:Response) => {
 
         // check if level already completed by user
 
-        const totatQuestionsInLevel = level.Questions.length;
+        const totalQuestionsInLevel = level.Questions.length;
+        
+        if(totalQuestionsInLevel===0) {
+            res.status(400).json({
+                "success":false,
+                "message":"no questions in level, user cannot complete level"
+            });
+            return;
+        }
+
         let noOfCorrectQuestions = 0;
         let totalPointsEarnedInLevel = 0;
-        for(let i=0;i<totatQuestionsInLevel;i++) {
+        for(let i=0;i<totalQuestionsInLevel;i++) {
             const questionResponse = level.Questions[i].QuestionResponse
             .find((questionResponse) => questionResponse.responderId===user.id);
+            console.log(questionResponse);
             if(!questionResponse) {
                 continue;
             }
@@ -500,13 +520,11 @@ const completeLevelHandler = async (req:Request,res:Response) => {
                 noOfCorrectQuestions++;
             }
             totalPointsEarnedInLevel+=questionResponse.pointsEarned;
-        }
-    
+        }    
     
         let isComplete = false;
-        const percentage = (noOfCorrectQuestions / totatQuestionsInLevel) * 100;
-        console.log('percentage :- ' , percentage);
-        if(percentage > 50) {
+        const percentage = Math.fround(((noOfCorrectQuestions) / (totalQuestionsInLevel)) * 100);
+        if(noOfCorrectQuestions > level.passingQuestions) {
             isComplete=true;
         }
     
@@ -518,29 +536,43 @@ const completeLevelHandler = async (req:Request,res:Response) => {
             return;
         }
 
-        const isLevelComplete = await prisma.userLevelComplete.findFirst({where:{userId:user.id,levelId:level.id}});
-        if(isLevelComplete) {
+        const completedLevel = await prisma.userLevelComplete.findFirst({where:{userId:user.id,levelId:level.id}});
+        if(completedLevel) {
+            // is level is already completed by user i.e user has passed this level 
+            // if the points earned by user in completing this level currently > prev points earned 
+            //  update the entry in the userLevelComplete table
+            // else  do nothing and return success response for completing the level with 200 OK as no new 
+            if(totalPointsEarnedInLevel  > completedLevel.totalPoints) {
+                await prisma.userLevelComplete.update({where:{id:completedLevel.id},data:{
+                    totalPoints:totalPointsEarnedInLevel,
+                }});
+            }
+
+            if(noOfCorrectQuestions > completedLevel.noOfCorrectQuestions) {
+                await prisma.userLevelComplete.update({where:{id:completedLevel.id},data:{
+                    noOfCorrectQuestions:noOfCorrectQuestions,
+                }})
+            }
+            
             res.status(200).json({
                 "success":true,
-                "message":"level completed",
+                "message":"Level Completed",
                 "noOfCorrectQuestions":noOfCorrectQuestions,
-                "totalQuestions":totatQuestionsInLevel,
+                "totalQuestions":totalQuestionsInLevel,
                 "percentage":percentage,
                 "isComplete":isComplete,
             });
-            return;
-        }
-
-        await prisma.userLevelComplete.create({data:{userId:user.id,levelId:level.id,totalPoints:totalPointsEarnedInLevel}});
-        
-        res.status(201).json({
-            "success":true,
-            "message":"level completed",
-            "noOfCorrectQuestions":noOfCorrectQuestions,
-            "totalQuestions":totatQuestionsInLevel,
-            "percentage":percentage,
-            "isComplete":isComplete,
-        });
+        } else {
+            await prisma.userLevelComplete.create({data:{userId:user.id,levelId:level.id,totalPoints:totalPointsEarnedInLevel,noOfCorrectQuestions:noOfCorrectQuestions}});
+            res.status(201).json({
+                "success":true,
+                "message":"Level completed",
+                "noOfCorrectQuestions":noOfCorrectQuestions,
+                "totalQuestions":totalQuestionsInLevel,
+                "percentage":percentage,
+                "isComplete":isComplete,
+            });
+        }        
     } catch (error) {
         console.log(error);
         res.status(500).json({
@@ -584,6 +616,9 @@ const getCompletedLevelsBySubjectHandler = async (req:Request,res:Response) => {
         completedLevelsByUser.filter((completedLevel) => completedLevel.level.subjectId===subject.id)
         .map((completedLevel) => completedLevel.level);
     
+        // sort by position 
+        completedLevelsByUserInSubject = completedLevelsByUserInSubject.sort((a,b) => a.position - b.position);
+
         res.status(200).json({
             "success":true,
             "completedLevels":completedLevelsByUserInSubject,

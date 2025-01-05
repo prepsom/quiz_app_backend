@@ -86,6 +86,7 @@ const getLeaderBoardHandler = async (req:Request,res:Response) => {
                     name:user.name,
                     password:user.password,
                     role:user.role,
+                    lastLogin:user.lastLogin,
                 },
                 totalPoints:sum,
             });
