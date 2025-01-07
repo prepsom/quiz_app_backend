@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.prisma = void 0;
+exports.openai = exports.prisma = void 0;
 require("dotenv/config");
 const express_1 = __importDefault(require("express"));
 const client_1 = require("@prisma/client");
@@ -26,10 +26,14 @@ const question_routes_1 = __importDefault(require("./routes/question.routes"));
 const answer_route_1 = __importDefault(require("./routes/answer.route"));
 const questionResponse_route_1 = __importDefault(require("./routes/questionResponse.route"));
 const user_route_1 = __importDefault(require("./routes/user.route"));
+const openai_1 = __importDefault(require("openai"));
 const app = (0, express_1.default)();
 const port = process.env.PORT;
 // instantiating a new prisma client
 exports.prisma = new client_1.PrismaClient();
+exports.openai = new openai_1.default({
+    apiKey: process.env.OPENAI_API_KEY,
+});
 // middlewares
 app.use(express_1.default.json());
 app.use((0, cookie_parser_1.default)());

@@ -12,11 +12,16 @@ import questionRoutes from "./routes/question.routes"
 import answerRoutes from "./routes/answer.route"
 import questionResponseRoutes from "./routes/questionResponse.route"
 import userRoutes from "./routes/user.route"
+import OpenAI from 'openai';
 
 const app = express();
 const port = process.env.PORT;
 // instantiating a new prisma client
 export const prisma = new PrismaClient()
+export const openai = new OpenAI({
+    apiKey:process.env.OPENAI_API_KEY,
+});
+
 
 // middlewares
 app.use(express.json());

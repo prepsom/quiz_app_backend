@@ -1,5 +1,5 @@
-import { Request, Response } from "express";
-import { prisma } from "..";
+import { json, Request, Response } from "express";
+import { openai, prisma } from "..";
 import { $Enums, Question } from "@prisma/client";
 
 
@@ -483,6 +483,11 @@ const completeLevelHandler = async (req:Request,res:Response) => {
             Questions:{
                 where:{ready:true},
                 select:{
+                    questionTitle:true,
+                    questionHint:true,
+                    difficulty:true,
+                    id:true,
+                    Answers:true,
                     QuestionResponse:true,
                 }
             },
@@ -506,6 +511,22 @@ const completeLevelHandler = async (req:Request,res:Response) => {
             });
             return;
         }
+
+        // all the questions in the level and its responses where the responderId=user.id
+        // [
+        //     {
+        //         question
+        //         questionResponseByUser:{
+                
+        //         }
+        //     },
+        //     {
+
+        //     },
+        //     {
+
+        //     }
+        // ]
 
         let noOfCorrectQuestions = 0;
         let totalPointsEarnedInLevel = 0;
@@ -536,21 +557,69 @@ const completeLevelHandler = async (req:Request,res:Response) => {
             return;
         }
 
+        const openAiMessages = level.Questions.map((question) => {
+            const questionResponse = question.QuestionResponse.find((response) => response.responderId===user.id);
+            return {
+                ...question,
+                "questionResponseByUser":questionResponse,
+            }
+        });        
+        console.log(openAiMessages);
+
+        // Give me  strength , weaknesses and recommendations based on the list of questions and its responses by the user.
+
+        const openAIResponse = await openai.chat.completions.create({
+            model:"gpt-3.5-turbo",
+            store:true,
+            messages: [
+                {
+                    role:"system",
+                    "content":`You are an assistant that provides feedback on user performance in a quiz. 
+                        Analyze the user's responses and provide feedback in the following JSON format:
+                        {
+                            "strengths": ["strength1", "strength2", ...],
+                            "weaknesses": ["weakness1", "weakness2", ...],
+                            "recommendations": ["recommendation1", "recommendation2", ...]
+                        }
+                        Each array should contain 2-3 points.`
+                },
+                {
+                    role:"user",
+                    content:JSON.stringify(openAiMessages)
+                }
+            ],
+        });
+
+
+        const feedback = openAIResponse.choices[0].message.content;
+        const apiData = JSON.parse(feedback || "") as {"strengths":string[];"weaknesses":string[];"recommendations":string[]};
+        const strengths = apiData.strengths;
+        const weaknesses = apiData.weaknesses;
+        const recommendations = apiData.recommendations;
+        // Parsing feedback into structured JSON
+
         const completedLevel = await prisma.userLevelComplete.findFirst({where:{userId:user.id,levelId:level.id}});
         if(completedLevel) {
             // is level is already completed by user i.e user has passed this level 
             // if the points earned by user in completing this level currently > prev points earned 
             //  update the entry in the userLevelComplete table
             // else  do nothing and return success response for completing the level with 200 OK as no new 
+            
             if(totalPointsEarnedInLevel  > completedLevel.totalPoints) {
                 await prisma.userLevelComplete.update({where:{id:completedLevel.id},data:{
                     totalPoints:totalPointsEarnedInLevel,
+                    strengths:strengths,
+                    weaknesses:weaknesses,
+                    recommendations:recommendations,
                 }});
             }
 
             if(noOfCorrectQuestions > completedLevel.noOfCorrectQuestions) {
                 await prisma.userLevelComplete.update({where:{id:completedLevel.id},data:{
                     noOfCorrectQuestions:noOfCorrectQuestions,
+                    strengths:strengths,
+                    weaknesses:weaknesses,
+                    recommendations:recommendations,
                 }})
             }
             
@@ -561,9 +630,20 @@ const completeLevelHandler = async (req:Request,res:Response) => {
                 "totalQuestions":totalQuestionsInLevel,
                 "percentage":percentage,
                 "isComplete":isComplete,
+                "strengths":strengths,
+                "weaknesses":weaknesses,
+                "recomendations":recommendations,
             });
         } else {
-            await prisma.userLevelComplete.create({data:{userId:user.id,levelId:level.id,totalPoints:totalPointsEarnedInLevel,noOfCorrectQuestions:noOfCorrectQuestions}});
+            await prisma.userLevelComplete.create({data:{
+                userId:user.id,
+                levelId:level.id,
+                totalPoints:totalPointsEarnedInLevel,
+                noOfCorrectQuestions:noOfCorrectQuestions,
+                strengths:strengths,
+                weaknesses:weaknesses,
+                recommendations:recommendations,
+            }});
             res.status(201).json({
                 "success":true,
                 "message":"Level completed",
@@ -571,6 +651,9 @@ const completeLevelHandler = async (req:Request,res:Response) => {
                 "totalQuestions":totalQuestionsInLevel,
                 "percentage":percentage,
                 "isComplete":isComplete,
+                "strengths":strengths,
+                "weaknesses":weaknesses,
+                "recomendations":recommendations,
             });
         }        
     } catch (error) {
