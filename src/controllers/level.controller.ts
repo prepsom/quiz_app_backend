@@ -632,7 +632,7 @@ const completeLevelHandler = async (req:Request,res:Response) => {
                 "isComplete":isComplete,
                 "strengths":strengths,
                 "weaknesses":weaknesses,
-                "recomendations":recommendations,
+                "recommendations":recommendations,
             });
         } else {
             await prisma.userLevelComplete.create({data:{
@@ -653,7 +653,7 @@ const completeLevelHandler = async (req:Request,res:Response) => {
                 "isComplete":isComplete,
                 "strengths":strengths,
                 "weaknesses":weaknesses,
-                "recomendations":recommendations,
+                "recommendations":recommendations,
             });
         }        
     } catch (error) {

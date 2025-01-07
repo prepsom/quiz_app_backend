@@ -547,7 +547,7 @@ const completeLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
                 "isComplete": isComplete,
                 "strengths": strengths,
                 "weaknesses": weaknesses,
-                "recomendations": recommendations,
+                "recommendations": recommendations,
             });
         }
         else {
@@ -569,7 +569,7 @@ const completeLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
                 "isComplete": isComplete,
                 "strengths": strengths,
                 "weaknesses": weaknesses,
-                "recomendations": recommendations,
+                "recommendations": recommendations,
             });
         }
     }
