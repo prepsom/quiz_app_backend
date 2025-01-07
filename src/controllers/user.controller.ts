@@ -41,6 +41,10 @@ const getTotalPointsHandler = async (req:Request,res:Response) => {
 const getLeaderBoardHandler = async (req:Request,res:Response) => {
     try {
         const userId = req.userId;
+        const {limit,page} = req.query as {page:string,limit:string};
+        const limitNum = parseInt(limit) || 10;
+        const pageNum = parseInt(page) || 1;
+
         // ^ user making the request
         // we want rankings of the users that is in the same grade as the authenticated user
         const user = await prisma.user.findUnique({where:{id:userId}});
@@ -93,11 +97,33 @@ const getLeaderBoardHandler = async (req:Request,res:Response) => {
             // get total points for each user after the loop above
         }
     
-        usersWithTotalPoints.sort((a,b) => b.totalPoints - a.totalPoints);
+        // here we have the array with users and its total points with no regard for order or limit
 
+        usersWithTotalPoints.sort((a,b) => b.totalPoints - a.totalPoints);
+        
+
+        // after ther users array with total points has been sorted
+        // we trim it down even more with the pageNum and limitNum 
+
+        // example page 1 and limit 10 
+        let newTestArr = [];
+        const skip = pageNum * limitNum - limitNum; // no of elements to skip 
+        let noOfElements = 0;
+        for(let i=0;i<usersWithTotalPoints.length;i++) {
+            if(i < skip) continue;
+            if(i >= skip) {
+                newTestArr.push(usersWithTotalPoints[i]);
+                noOfElements++;
+            }
+            if(noOfElements===limitNum) {
+                break;
+            }
+        }
+        usersWithTotalPoints = newTestArr;
         res.status(200).json({
             "success":true,
             usersWithTotalPoints,
+            "noOfPages": Math.ceil(users.length / limitNum),
         });
     } catch (error) {
         console.log(error);

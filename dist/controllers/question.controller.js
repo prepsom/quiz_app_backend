@@ -74,7 +74,7 @@ const getQuestionsByLevelHandler = (req, res) => __awaiter(void 0, void 0, void 
 exports.getQuestionsByLevelHandler = getQuestionsByLevelHandler;
 const addQuestionByLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { difficulty, levelId, questionTitle } = req.body;
+        const { difficulty, levelId, questionTitle, explanation } = req.body;
         const userId = req.userId;
         const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
         if (!user || user.role == "STUDENT") {
@@ -116,7 +116,8 @@ const addQuestionByLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0
             data: {
                 questionTitle,
                 difficulty,
-                levelId
+                levelId,
+                explanation,
             }
         });
         res.status(201).json({
@@ -197,13 +198,15 @@ const getQuestionWithAnswers = (req, res) => __awaiter(void 0, void 0, void 0, f
             });
             return;
         }
-        const question = yield __1.prisma.question.findUnique({ where: { id: questionId }, include: {
+        const question = yield __1.prisma.question.findUnique({
+            where: { id: questionId }, include: {
                 level: {
                     select: {
                         subject: true,
                     }
                 }
-            } });
+            }
+        });
         if (!question) {
             res.status(400).json({
                 "success": false,
@@ -229,16 +232,32 @@ const getQuestionWithAnswers = (req, res) => __awaiter(void 0, void 0, void 0, f
                 return;
             }
         }
-        const questionWithAnswers = yield __1.prisma.question.findUnique({ where: { id: question.id }, include: {
+        const questionWithAnswers = yield __1.prisma.question.findUnique({
+            where: { id: question.id }, include: {
                 Answers: true,
-            } });
-        const answers = user.role === "STUDENT" ? questionWithAnswers === null || questionWithAnswers === void 0 ? void 0 : questionWithAnswers.Answers.map((answer) => {
-            return {
+            }
+        });
+        // Fisher-Yates shuffle algorithm
+        const shuffleArray = (array) => {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        };
+        // Get and shuffle answers based on user role
+        let answers = user.role === "STUDENT"
+            ? questionWithAnswers === null || questionWithAnswers === void 0 ? void 0 : questionWithAnswers.Answers.map((answer) => ({
                 id: answer.id,
                 value: answer.value,
                 questionId: answer.questionId,
-            };
-        }) : questionWithAnswers === null || questionWithAnswers === void 0 ? void 0 : questionWithAnswers.Answers;
+            }))
+            : questionWithAnswers === null || questionWithAnswers === void 0 ? void 0 : questionWithAnswers.Answers;
+        // Shuffle the answers array if it exists
+        if (answers) {
+            answers = shuffleArray(answers);
+        }
         const response = Object.assign(Object.assign({}, questionWithAnswers), { "Answers": answers });
         res.status(200).json({
             "success": true,

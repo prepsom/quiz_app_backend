@@ -6,6 +6,7 @@ type AddQuestionRequestBody = {
     questionTitle:string;
     difficulty:"EASY" | "MEDIUM" | "HARD"
     levelId:string;
+    explanation:string;
 }
 
 const getQuestionsByLevelHandler = async (req:Request,res:Response) => {
@@ -76,7 +77,7 @@ const getQuestionsByLevelHandler = async (req:Request,res:Response) => {
 
 const addQuestionByLevelHandler = async (req:Request,res:Response) => {
     try {
-        const {difficulty,levelId,questionTitle} = req.body as AddQuestionRequestBody;
+        const {difficulty,levelId,questionTitle,explanation} = req.body as AddQuestionRequestBody;
         const userId = req.userId;
     
         const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -123,7 +124,8 @@ const addQuestionByLevelHandler = async (req:Request,res:Response) => {
             data: {
                 questionTitle,
                 difficulty,
-                levelId
+                levelId,
+                explanation,
             }
         });
 
@@ -131,7 +133,6 @@ const addQuestionByLevelHandler = async (req:Request,res:Response) => {
             success: true,
             question
         });
-
     } catch (error) {
         console.log(error);
         res.status(500).json({
@@ -196,83 +197,102 @@ const deleteQuestionHandler = async (req:Request,res:Response) => {
         });
     }
 }
-
-const getQuestionWithAnswers = async (req:Request,res:Response) => {
+const getQuestionWithAnswers = async (req: Request, res: Response) => {
     try {
-        const {questionId} = req.params as {questionId:string};
+        const { questionId } = req.params as { questionId: string };
         const userId = req.userId;
-    
-        const user = await prisma.user.findUnique({where:{id:userId}});
-        if(!user) {
+
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
             res.status(400).json({
-                "success":false,
-                "message":"invalid user id"
+                "success": false,
+                "message": "invalid user id"
             })
             return;
         }
-    
-        const question = await prisma.question.findUnique({where:{id:questionId},include:{
-            level:{
-                select:{
-                    subject:true,
+
+        const question = await prisma.question.findUnique({
+            where: { id: questionId }, include: {
+                level: {
+                    select: {
+                        subject: true,
+                    }
                 }
             }
-        }});
-        if(!question) {
+        });
+        if (!question) {
             res.status(400).json({
-                "success":false,
-                "message":"question not found"
+                "success": false,
+                "message": "question not found"
             });
             return;
         }
-    
+
         const gradeId = question.level.subject.gradeId;
-        
-        if(user.role==="STUDENT" && user.gradeId!==gradeId) {
+
+        if (user.role === "STUDENT" && user.gradeId !== gradeId) {
             res.status(401).json({
-                "success":false,
-                "message":"student cannot read questions for this grade"
+                "success": false,
+                "message": "student cannot read questions for this grade"
             })
             return;
         }
-    
-        if(user.role==="TEACHER") {
-            const teachesGrade = await prisma.teacherGrade.findFirst({where:{teacherId:user.id,gradeId:gradeId}});
-            if(!teachesGrade) {
-                
+
+        if (user.role === "TEACHER") {
+            const teachesGrade = await prisma.teacherGrade.findFirst({ where: { teacherId: user.id, gradeId: gradeId } });
+            if (!teachesGrade) {
                 res.status(401).json({
-                    "success":false,
-                    "message":"teacher cannot read questions for this grade"
+                    "success": false,
+                    "message": "teacher cannot read questions for this grade"
                 })
-                
                 return;
             }
         }
-    
-        const questionWithAnswers = await prisma.question.findUnique({where:{id:question.id},include:{
-            Answers:true,
-        }});
 
-        const answers = user.role==="STUDENT" ? questionWithAnswers?.Answers.map((answer:Answer) => {
-            return {
-                id:answer.id,
-                value:answer.value,
-                questionId:answer.questionId,
+        const questionWithAnswers = await prisma.question.findUnique({
+            where: { id: question.id }, include: {
+                Answers: true,
             }
-        }) : questionWithAnswers?.Answers;
+        });
+
+        // Fisher-Yates shuffle algorithm
+        const shuffleArray = <T>(array: T[]): T[] => {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        };
+
+        // Get and shuffle answers based on user role
+        let answers = user.role === "STUDENT" 
+            ? questionWithAnswers?.Answers.map((answer: Answer) => ({
+                id: answer.id,
+                value: answer.value,
+                questionId: answer.questionId,
+            }))
+            : questionWithAnswers?.Answers;
+
+        // Shuffle the answers array if it exists
+        if (answers) {
+            answers = shuffleArray(answers);
+        }
+
         const response = {
             ...questionWithAnswers,
-            "Answers":answers,
+            "Answers": answers,
         }
+
         res.status(200).json({
-            "success":true,
-            "question":response,
+            "success": true,
+            "question": response,
         });
     } catch (error) {
         console.log(error);
         res.status(500).json({
-            "success":false,
-            "message":"internal server error when getting question with its answers"
+            "success": false,
+            "message": "internal server error when getting question with its answers"
         });
     }
 }
