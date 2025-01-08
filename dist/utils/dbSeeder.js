@@ -139,6 +139,7 @@ function seedUsers(gradeNo) {
                 yield seedUserInGrade(gradeId, user.email, user.name, user.password, user.role, user.avatar);
             }
             console.log('All users seeded successfully');
+            yield __1.prisma.settings.create({ data: { key: "usersSeeded", value: "true" } });
         }
         catch (error) {
             console.log('Error seeding users:- ', error);

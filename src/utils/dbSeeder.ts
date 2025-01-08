@@ -97,7 +97,7 @@ export async function seedUsers(gradeNo:number) {
     }
 
     const gradeId = grade.id;
-    
+
     const users = [
         {
             email: "teacher.smith@school.com",
@@ -141,6 +141,7 @@ export async function seedUsers(gradeNo:number) {
             await seedUserInGrade(gradeId,user.email,user.name,user.password,user.role,user.avatar);
         }
         console.log('All users seeded successfully');
+        await prisma.settings.create({data:{key:"usersSeeded",value:"true"}});
     } catch (error) {
         console.log('Error seeding users:- ',error);
         throw error;
