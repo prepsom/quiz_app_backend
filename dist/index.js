@@ -67,10 +67,10 @@ app.use("/user", user_route_1.default);
 initialize().catch((e) => {
     process.exit(1);
 });
-// seedUsers().catch(e => {
-//     console.log('Failed to seed users',e);
-//     process.exit(1);
-// });
+(0, dbSeeder_1.seedUsers)(1).catch(e => {
+    console.log('Failed to seed users', e);
+    process.exit(1);
+});
 app.listen(port, () => {
     console.log(`server is running on post ${port}`);
 });

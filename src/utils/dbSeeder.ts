@@ -39,6 +39,7 @@ const seedUserInGrade = async (
 ) => {
     // passwords are in plain string () 
     try {
+
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password,salt);
 
@@ -78,8 +79,25 @@ const seedUserInGrade = async (
 // seed multiple users
 
 
-export async function seedUsers() {
-    const gradeId = "b4fcec63-e4bf-493f-9a20-99c3ff1e999d"
+export async function seedUsers(gradeNo:number) {
+    
+    const seeded = await prisma.settings.findUnique({
+        where:{key:"usersSeeded"},
+    });
+
+    if(seeded) {
+        console.log("Users already seeded. Skipping...");
+        return;
+    }
+    
+    const grade = await prisma.grade.findFirst({where:{grade:gradeNo}});
+    if(!grade) {
+        console.log(`grade ${gradeNo} doesn't exist in DB`);
+        return;
+    }
+
+    const gradeId = grade.id;
+    
     const users = [
         {
             email: "teacher.smith@school.com",

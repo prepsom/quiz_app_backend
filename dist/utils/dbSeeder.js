@@ -82,9 +82,21 @@ const seedUserInGrade = (gradeId, email, name, password, role, avatar) => __awai
     }
 });
 // seed multiple users
-function seedUsers() {
+function seedUsers(gradeNo) {
     return __awaiter(this, void 0, void 0, function* () {
-        const gradeId = "b4fcec63-e4bf-493f-9a20-99c3ff1e999d";
+        const seeded = yield __1.prisma.settings.findUnique({
+            where: { key: "usersSeeded" },
+        });
+        if (seeded) {
+            console.log("Users already seeded. Skipping...");
+            return;
+        }
+        const grade = yield __1.prisma.grade.findFirst({ where: { grade: gradeNo } });
+        if (!grade) {
+            console.log(`grade ${gradeNo} doesn't exist in DB`);
+            return;
+        }
+        const gradeId = grade.id;
         const users = [
             {
                 email: "teacher.smith@school.com",
