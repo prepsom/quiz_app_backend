@@ -577,11 +577,12 @@ const completeLevelHandler = async (req:Request,res:Response) => {
                     "content":`You are an assistant that provides feedback on user performance in a quiz. 
                         Analyze the user's responses and provide feedback in the following JSON format:
                         {
+                            "remarks" : "Great job, Alice Johnson! You've shown strong understanding of basic concepts. A little more focus on applying concepts creatively, and you'll ace the next level!"
                             "strengths": ["strength1", "strength2", ...],
                             "weaknesses": ["weakness1", "weakness2", ...],
                             "recommendations": ["recommendation1", "recommendation2", ...]
                         }
-                        Each array should contain 2-3 points.`
+                        Each array should contain 2-3 points. Write remarks according to the performance , the above is just an example.`
                 },
                 {
                     role:"user",
@@ -592,10 +593,11 @@ const completeLevelHandler = async (req:Request,res:Response) => {
 
 
         const feedback = openAIResponse.choices[0].message.content;
-        const apiData = JSON.parse(feedback || "") as {"strengths":string[];"weaknesses":string[];"recommendations":string[]};
+        const apiData = JSON.parse(feedback || "") as {"remarks":string;"strengths":string[];"weaknesses":string[];"recommendations":string[]};
         const strengths = apiData.strengths;
         const weaknesses = apiData.weaknesses;
         const recommendations = apiData.recommendations;
+        const remarks = apiData.remarks;
         // Parsing feedback into structured JSON
 
         const completedLevel = await prisma.userLevelComplete.findFirst({where:{userId:user.id,levelId:level.id}});
@@ -633,6 +635,7 @@ const completeLevelHandler = async (req:Request,res:Response) => {
                 "strengths":strengths,
                 "weaknesses":weaknesses,
                 "recommendations":recommendations,
+                "remarks":remarks,
             });
         } else {
             await prisma.userLevelComplete.create({data:{
@@ -654,6 +657,7 @@ const completeLevelHandler = async (req:Request,res:Response) => {
                 "strengths":strengths,
                 "weaknesses":weaknesses,
                 "recommendations":recommendations,
+                "remarks":remarks,
             });
         }        
     } catch (error) {

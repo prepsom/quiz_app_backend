@@ -498,11 +498,12 @@ const completeLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
                     "content": `You are an assistant that provides feedback on user performance in a quiz. 
                         Analyze the user's responses and provide feedback in the following JSON format:
                         {
+                            "remarks" : "Great job, Alice Johnson! You've shown strong understanding of basic concepts. A little more focus on applying concepts creatively, and you'll ace the next level!"
                             "strengths": ["strength1", "strength2", ...],
                             "weaknesses": ["weakness1", "weakness2", ...],
                             "recommendations": ["recommendation1", "recommendation2", ...]
                         }
-                        Each array should contain 2-3 points.`
+                        Each array should contain 2-3 points. Write remarks according to the performance , the above is just an example.`
                 },
                 {
                     role: "user",
@@ -515,6 +516,7 @@ const completeLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
         const strengths = apiData.strengths;
         const weaknesses = apiData.weaknesses;
         const recommendations = apiData.recommendations;
+        const remarks = apiData.remarks;
         // Parsing feedback into structured JSON
         const completedLevel = yield __1.prisma.userLevelComplete.findFirst({ where: { userId: user.id, levelId: level.id } });
         if (completedLevel) {
@@ -548,6 +550,7 @@ const completeLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
                 "strengths": strengths,
                 "weaknesses": weaknesses,
                 "recommendations": recommendations,
+                "remarks": remarks,
             });
         }
         else {
@@ -570,6 +573,7 @@ const completeLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
                 "strengths": strengths,
                 "weaknesses": weaknesses,
                 "recommendations": recommendations,
+                "remarks": remarks,
             });
         }
     }
