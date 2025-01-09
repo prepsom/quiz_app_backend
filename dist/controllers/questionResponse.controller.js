@@ -52,6 +52,7 @@ const answerQuestionHandler = (req, res) => __awaiter(void 0, void 0, void 0, fu
             });
             return;
         }
+        const correctAnswer = question.Answers.find(answer => answer.isCorrect);
         const pointsEarned = calculatePoints(selectedAnswer.isCorrect, question.difficulty, timeTaken);
         // if a questionResponse by the user to this question already exists -> update the record with the new selectedAnswer and isCorrect field
         // else create a questionResponse
@@ -68,6 +69,7 @@ const answerQuestionHandler = (req, res) => __awaiter(void 0, void 0, void 0, fu
                 success: true,
                 message: "Response recorded successfully",
                 questionResponse: updatedResponse,
+                correctAnswerId: correctAnswer === null || correctAnswer === void 0 ? void 0 : correctAnswer.id,
             });
         }
         else {
@@ -85,6 +87,7 @@ const answerQuestionHandler = (req, res) => __awaiter(void 0, void 0, void 0, fu
                 success: true,
                 message: "Response recorded successfully",
                 questionResponse: newResponse,
+                correctAnswerId: correctAnswer === null || correctAnswer === void 0 ? void 0 : correctAnswer.id,
             });
         }
     }

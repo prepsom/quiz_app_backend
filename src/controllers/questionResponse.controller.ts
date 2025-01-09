@@ -55,6 +55,7 @@ const answerQuestionHandler = async (req: Request, res: Response) => {
             });
             return;
         }
+        const correctAnswer = question.Answers.find(answer => answer.isCorrect); 
 
         const pointsEarned = calculatePoints(selectedAnswer.isCorrect, question.difficulty, timeTaken);
 
@@ -73,6 +74,7 @@ const answerQuestionHandler = async (req: Request, res: Response) => {
                 success: true,
                 message: "Response recorded successfully",
                 questionResponse:updatedResponse,
+                correctAnswerId:correctAnswer?.id,
             });
         } else {
             const newResponse = await prisma.questionResponse.create({
@@ -89,6 +91,7 @@ const answerQuestionHandler = async (req: Request, res: Response) => {
                 success: true,
                 message: "Response recorded successfully",
                 questionResponse:newResponse,
+                correctAnswerId:correctAnswer?.id,
             });
         }
     } catch (error) {
