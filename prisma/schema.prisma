@@ -40,7 +40,6 @@ model User {
   UserLevelComplete UserLevelComplete[]
   lastLogin         DateTime?
 }
-
 // Junction table for Teacher-Grade many-to-many relationship
 model TeacherGrade {
   id        String   @id @default(uuid())

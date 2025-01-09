@@ -4,7 +4,7 @@ import { PrismaClient } from "@prisma/client";
 import cookieParser from "cookie-parser";
 import cors from "cors"
 import { GRADES } from "./constants";
-import { dbInit, seedUsers } from "./utils/dbSeeder";
+import { dbInit, seedLevelsInSubject, seedUsers } from "./utils/dbSeeder";
 import authRoutes from "./routes/auth.routes"
 import subjectRoutes from "./routes/subject.routes"
 import levelRoutes from "./routes/level.routes"
@@ -13,6 +13,12 @@ import answerRoutes from "./routes/answer.route"
 import questionResponseRoutes from "./routes/questionResponse.route"
 import userRoutes from "./routes/user.route"
 import OpenAI from 'openai';
+import {join} from "path"
+
+const projectRoot = join(__dirname, '..');
+
+// Resolve the CSV path relative to the project root
+const csvPath = join(projectRoot, 'public', process.env.USERS_CSV_PATH || 'Class-X-users-list.csv');
 
 const app = express();
 const port = process.env.PORT;
@@ -59,10 +65,14 @@ app.use("/user",userRoutes);
 initialize().catch((e) => {
     process.exit(1);
 })
-seedUsers(1).catch(e => {
-    console.log('Failed to seed users',e);
-    process.exit(1);
-});
+// seedUsers(1,csvPath).catch(e => {
+//     console.log('Failed to seed users',e);
+//     process.exit(1);
+// });
+// seedLevelsInSubject('0b0c9d2f-70f1-49e9-9bdb-225415e43d80').catch(e => {
+//     console.log('FAILED TO SEED LEVELS IN DB',e)
+//     process.exit(1);
+// }).then(() => console.log('SUCCESSFULLY SEEDED LEVELS IN DB'));
 
 app.listen(port,() => {
     console.log(`server is running on post ${port}`);

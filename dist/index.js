@@ -27,6 +27,10 @@ const answer_route_1 = __importDefault(require("./routes/answer.route"));
 const questionResponse_route_1 = __importDefault(require("./routes/questionResponse.route"));
 const user_route_1 = __importDefault(require("./routes/user.route"));
 const openai_1 = __importDefault(require("openai"));
+const path_1 = require("path");
+const projectRoot = (0, path_1.join)(__dirname, '..');
+// Resolve the CSV path relative to the project root
+const csvPath = (0, path_1.join)(projectRoot, 'public', process.env.USERS_CSV_PATH || 'Class-X-users-list.csv');
 const app = (0, express_1.default)();
 const port = process.env.PORT;
 // instantiating a new prisma client
@@ -67,10 +71,14 @@ app.use("/user", user_route_1.default);
 initialize().catch((e) => {
     process.exit(1);
 });
-(0, dbSeeder_1.seedUsers)(1).catch(e => {
-    console.log('Failed to seed users', e);
-    process.exit(1);
-});
+// seedUsers(1,csvPath).catch(e => {
+//     console.log('Failed to seed users',e);
+//     process.exit(1);
+// });
+// seedLevelsInSubject('0b0c9d2f-70f1-49e9-9bdb-225415e43d80').catch(e => {
+//     console.log('FAILED TO SEED LEVELS IN DB',e)
+//     process.exit(1);
+// }).then(() => console.log('SUCCESSFULLY SEEDED LEVELS IN DB'));
 app.listen(port, () => {
     console.log(`server is running on post ${port}`);
 });

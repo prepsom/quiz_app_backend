@@ -1,6 +1,9 @@
 import { prisma } from "..";
 import { GRADES } from "../constants";
 import bcrypt from "bcrypt"
+import { readCsvStream } from "./csvParsing";
+import { UsersCsvData } from "../types";
+import { Level } from "@prisma/client";
 
 
 async function isGradesDbEmpty() {
@@ -27,7 +30,6 @@ export async function dbInit() {
 }
 
 
-
 // seed users to a grade 
 const seedUserInGrade = async (
     gradeId:string,
@@ -35,7 +37,6 @@ const seedUserInGrade = async (
     name:string,
     password:string,
     role:"STUDENT" | "TEACHER" | "ADMIN",
-    avatar:"MALE" | "FEMALE",
 ) => {
     // passwords are in plain string () 
     try {
@@ -47,7 +48,6 @@ const seedUserInGrade = async (
             await prisma.user.create({data:{
                 email:email.trim().toLowerCase(),
                 gradeId:gradeId,
-                avatar:avatar,
                 role:role,
                 name:name,
                 password:hashedPassword,
@@ -59,7 +59,6 @@ const seedUserInGrade = async (
                     name,
                     password:hashedPassword,
                     role,
-                    avatar,
                     teacherGrades:{
                         create:{
                             gradeId
@@ -79,17 +78,8 @@ const seedUserInGrade = async (
 // seed multiple users
 
 
-export async function seedUsers(gradeNo:number) {
-    
-    const seeded = await prisma.settings.findUnique({
-        where:{key:"usersSeeded"},
-    });
+export async function seedUsers(gradeNo:number,filePath:string) {
 
-    if(seeded) {
-        console.log("Users already seeded. Skipping...");
-        return;
-    }
-    
     const grade = await prisma.grade.findFirst({where:{grade:gradeNo}});
     if(!grade) {
         console.log(`grade ${gradeNo} doesn't exist in DB`);
@@ -98,52 +88,101 @@ export async function seedUsers(gradeNo:number) {
 
     const gradeId = grade.id;
 
-    const users = [
-        {
-            email: "teacher.smith@school.com",
-            name: "John Smith",
-            password: "teacher123",
-            role: "TEACHER" as const,
-            avatar: "MALE" as const
-        },
-        {
-            email: "sarah.jones@school.com",
-            name: "Sarah Jones",
-            password: "teach456",
-            role: "TEACHER" as const,
-            avatar: "FEMALE" as const
-        },
-        {
-            email: "alice.student@school.com",
-            name: "Alice Johnson",
-            password: "student123",
-            role: "STUDENT" as const,
-            avatar: "FEMALE" as const
-        },
-        {
-            email: "bob.student@school.com",
-            name: "Bob Wilson",
-            password: "student456",
-            role: "STUDENT" as const,
-            avatar: "MALE" as const
-        },
-        {
-            email: "emma.student@school.com",
-            name: "Emma Brown",
-            password: "student789",
-            role: "STUDENT" as const,
-            avatar: "FEMALE" as const
-        }
-    ];
+    // read from csv files to add users in a grade 
+    const usersData = await readCsvStream(filePath) as UsersCsvData[];
+    const users:{
+        email: string;
+        name: string;
+        password: string;
+        role: "STUDENT" | "TEACHER" | "ADMIN";
+    }[] = usersData.map((userData:UsersCsvData) => {
+        return {
+            // email , name , password , role
+            "email":userData["Email ID"],
+            "name":userData["Full Name"],
+            "password":"1234@#A",
+            "role":"STUDENT",
+        };
+    })
 
     try {
         for(const user of users) {
-            await seedUserInGrade(gradeId,user.email,user.name,user.password,user.role,user.avatar);
+
+            const existingUser = await prisma.user.findUnique({
+                where:{email:user.email.trim().toLowerCase()}
+            });
+            if(!existingUser) {
+                await seedUserInGrade(gradeId,user.email,user.name,user.password,user.role);
+                console.log(`Seeded new user:- ${user.email}`);
+            } else {
+                console.log(`Skipping existing user:- ${user.email}`);
+            }
         }
         console.log('All users seeded successfully');
-        await prisma.settings.create({data:{key:"usersSeeded",value:"true"}});
     } catch (error) {
         console.log('Error seeding users:- ',error);
         throw error;
     }
 }
+
+
+const seedLevelInSubject = async (subjectId:string,levelName:string,levelPassingQuestions:number) => {
+    try {
+        const highestPosition = await prisma.level.findMany({where:{subjectId:subjectId},orderBy:{
+            position:"desc"
+        },take:1}).then(levels => levels[0]?.position ?? -1);
+
+
+        const newLevel = await prisma.level.create({data:{levelName:levelName,passingQuestions:levelPassingQuestions,position:highestPosition+1,subjectId:subjectId}});
+        console.log('LEVEL CREATED WITH ID :- ',newLevel.id);
+    } catch (error) {
+        console.log('FAILED TO ADD LEVEL IN DB');
+    }
+}
+
+
+export const seedLevelsInSubject = async (subjectId:string) => {
+    try {
+            
+    const subject = await prisma.subject.findUnique({where:{id:subjectId}});
+    if(!subject) {
+        console.log("Subject doesn't exist to add level in");
+        return;
+    }
+
+    type Level = {
+        levelName:string;
+        passingQuestions:number;
+    }
+    const levels:Level[] = [
+        {
+            levelName:"Control and Coordination",
+            passingQuestions:5,
+        },
+        {
+            levelName:"How Do Organisms Reproduce?",
+            passingQuestions:5,
+        },
+        {
+            levelName:"Heredity and Evolution",
+            passingQuestions:5,
+        },
+        {
+            levelName:"Our Environment",
+            passingQuestions:5,
+        },
+        {
+            levelName:"Sustainable Management of Natural Resources",
+            passingQuestions:5,
+        }
+    ];
+
+    for(let i=0;i<levels.length;i++) {
+        const level = levels[i];
+        await seedLevelInSubject(subject.id,level.levelName,level.passingQuestions);
+    }
+    } catch (error) {
+        console.log('FAILED TO INSERT LEVELS IN DB :- ',error);
+        throw error;
+    }
+} 
