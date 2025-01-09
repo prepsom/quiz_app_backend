@@ -496,14 +496,14 @@ const completeLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
                 {
                     role: "system",
                     "content": `You are an assistant that provides feedback on user performance in a quiz. 
-                        Analyze the user's responses and provide feedback in the following JSON format:
+                        Analyze the user's responses and provide feedback on the conceptual clarity based on the concept tested in the question in the following JSON format:
                         {
-                            "remarks" : "Great job, Alice Johnson! You've shown strong understanding of basic concepts. A little more focus on applying concepts creatively, and you'll ace the next level!"
-                            "strengths": ["strength1", "strength2", ...],
+                            "remarks" : "You've shown strong understanding of basic concepts. A little more focus on applying concepts creatively, and you'll ace the next level!"
+                            "strengths": ["Good understanding of photosynthesis", "Decent understanding of human organs", ...],
                             "weaknesses": ["weakness1", "weakness2", ...],
-                            "recommendations": ["recommendation1", "recommendation2", ...]
+                            "recommendations": ["Review the concepts of xyz", "Practice the concept using x biology textbook", ...]
                         }
-                        Each array should contain 2-3 points. Write remarks according to the performance , the above is just an example.`
+                        Each array should typically contain 2-3 points. Write remarks according to the performance , the above is just an example.`
                 },
                 {
                     role: "user",
