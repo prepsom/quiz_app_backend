@@ -719,6 +719,43 @@ const getCompletedLevelsBySubjectHandler = async (req:Request,res:Response) => {
     }
 }
 
+const getNextLevelHandler = async (req:Request,res:Response) => {
+    try {
+        const {levelId} = req.params as {levelId:string};
+        // the next level in terms of position to the level with id=levelId;
+    
+        const level = await prisma.level.findUnique({where:{id:levelId}});
+        if(!level) {
+            res.status(400).json({
+                "success":false,
+                "message":"level not found",
+            });
+            return;
+        }
+    
+        const currentLevelPosition = level.position;
+    
+        const nextLevels = await prisma.level.findMany({where:{subjectId:level.subjectId,position:{gt:currentLevelPosition}},
+            orderBy:{
+                position:"asc"
+            }
+        });
+        const nextLevel = nextLevels.length!==0 ? nextLevels[0] : null;
+    
+    
+        res.status(200).json({
+            "success":true,
+            "nextLevel":nextLevel,
+        });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            "success":false,
+            "message":"internal server error when getting next level"
+        });
+    }
+}
+
 export {
     addLevelHandler,
     getLevelsBySubjectHandler,
@@ -729,4 +766,5 @@ export {
     getLevelById,
     completeLevelHandler,
     getCompletedLevelsBySubjectHandler,
+    getNextLevelHandler,
 }

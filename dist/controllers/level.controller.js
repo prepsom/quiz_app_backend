@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getCompletedLevelsBySubjectHandler = exports.completeLevelHandler = exports.getLevelById = exports.getLevelQuestions = exports.getLevelResultsHandler = exports.updateLevelHandler = exports.deleteLevelHandler = exports.getLevelsBySubjectHandler = exports.addLevelHandler = void 0;
+exports.getNextLevelHandler = exports.getCompletedLevelsBySubjectHandler = exports.completeLevelHandler = exports.getLevelById = exports.getLevelQuestions = exports.getLevelResultsHandler = exports.updateLevelHandler = exports.deleteLevelHandler = exports.getLevelsBySubjectHandler = exports.addLevelHandler = void 0;
 const __1 = require("..");
 const addLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     // who can add levels -> teachers 
@@ -630,3 +630,36 @@ const getCompletedLevelsBySubjectHandler = (req, res) => __awaiter(void 0, void 
     }
 });
 exports.getCompletedLevelsBySubjectHandler = getCompletedLevelsBySubjectHandler;
+const getNextLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { levelId } = req.params;
+        // the next level in terms of position to the level with id=levelId;
+        const level = yield __1.prisma.level.findUnique({ where: { id: levelId } });
+        if (!level) {
+            res.status(400).json({
+                "success": false,
+                "message": "level not found",
+            });
+            return;
+        }
+        const currentLevelPosition = level.position;
+        const nextLevels = yield __1.prisma.level.findMany({ where: { subjectId: level.subjectId, position: { gt: currentLevelPosition } },
+            orderBy: {
+                position: "asc"
+            }
+        });
+        const nextLevel = nextLevels.length !== 0 ? nextLevels[0] : null;
+        res.status(200).json({
+            "success": true,
+            "nextLevel": nextLevel,
+        });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({
+            "success": false,
+            "message": "internal server error when getting next level"
+        });
+    }
+});
+exports.getNextLevelHandler = getNextLevelHandler;
