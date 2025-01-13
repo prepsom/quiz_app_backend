@@ -8,9 +8,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getLeaderBoardHandler = exports.getTotalPointsHandler = void 0;
+exports.updateUserPasswordHandler = exports.updateUserNameHandler = exports.isUserPasswordCorrect = exports.getLeaderBoardHandler = exports.getTotalPointsHandler = void 0;
 const __1 = require("..");
+const bcrypt_1 = __importDefault(require("bcrypt"));
 const getTotalPointsHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const userId = req.userId;
@@ -122,3 +126,145 @@ const getLeaderBoardHandler = (req, res) => __awaiter(void 0, void 0, void 0, fu
     }
 });
 exports.getLeaderBoardHandler = getLeaderBoardHandler;
+const isUserPasswordCorrect = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { password } = req.body;
+        const userId = req.userId;
+        const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            res.status(400).json({
+                "success": false,
+                "message": "invalid user id"
+            });
+            return;
+        }
+        const isPasswordCorrect = yield bcrypt_1.default.compare(password, user.password);
+        res.status(200).json({
+            "success": true,
+            "isPasswordCorrect": isPasswordCorrect,
+        });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({ "success": false, "message": "internal server error when checking user password" });
+    }
+});
+exports.isUserPasswordCorrect = isUserPasswordCorrect;
+const updateUserNameHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { newName } = req.body;
+        const userId = req.userId;
+        const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            res.status(400).json({
+                "success": false,
+                "message": "invalid user id"
+            });
+            return;
+        }
+        if (newName.trim() === "" || newName.length < 3) {
+            res.status(400).json({
+                "success": false,
+                "message": "new name has to have atleast 3 characters"
+            });
+            return;
+        }
+        const newUser = yield __1.prisma.user.update({ where: { id: user.id }, data: {
+                name: newName.trim(),
+            } });
+        res.status(200).json({
+            "sucess": true,
+            newUser,
+        });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({
+            "success": false,
+            "message": "internal server error when updating user name"
+        });
+    }
+});
+exports.updateUserNameHandler = updateUserNameHandler;
+const updateUserPasswordHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { newPassword } = req.body;
+        const userId = req.userId;
+        const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            res.status(400).json({
+                "success": false,
+                "message": "invalid user id"
+            });
+            return;
+        }
+        // validate password
+        if (!validatePassword(newPassword)) {
+            res.status(400).json({
+                "success": false,
+                "message": "password is weak"
+            });
+            return;
+        }
+        // hash new password
+        const salts = yield bcrypt_1.default.genSalt(10);
+        const newHashedPassword = yield bcrypt_1.default.hash(newPassword.trim(), salts);
+        yield __1.prisma.user.update({ where: { id: user.id }, data: { password: newHashedPassword } });
+        res.status(200).json({
+            "success": true,
+            "message": "password updated successfully"
+        });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({
+            "success": false,
+            "message": "internal server error when updating password"
+        });
+    }
+});
+exports.updateUserPasswordHandler = updateUserPasswordHandler;
+const validatePassword = (password) => {
+    // password requirements 
+    // need to have atleast 6 characters
+    // need to have atleast 1 special character
+    // need to have atleast 1 number 
+    // need to have atleast 1 uppercase char
+    if (password.length < 6)
+        return false;
+    const specialChars = "@#$%&!";
+    const numbers = "0123456789";
+    const upperCaseChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    let hasSpecialChar = false;
+    for (const specialChar of specialChars) {
+        for (let i = 0; i < password.length; i++) {
+            if (password.charAt(i) === specialChar) {
+                hasSpecialChar = true;
+                break;
+            }
+        }
+        if (hasSpecialChar)
+            break;
+    }
+    if (!hasSpecialChar)
+        return false;
+    let hasNumber = false;
+    for (const number of numbers) {
+        if (password.includes(number)) {
+            hasNumber = true;
+            break;
+        }
+    }
+    if (!hasNumber)
+        return false;
+    let hasUppercase = false;
+    for (const upperCaseChar of upperCaseChars) {
+        if (password.includes(upperCaseChar)) {
+            hasUppercase = true;
+            break;
+        }
+    }
+    if (!hasUppercase)
+        return false;
+    return true;
+};

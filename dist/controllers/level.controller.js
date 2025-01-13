@@ -411,177 +411,166 @@ const completeLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
         const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
         if (!user) {
             res.status(400).json({
-                "success": false,
-                "message": "invalid user id"
+                success: false,
+                message: "invalid user id"
             });
             return;
         }
-        const level = yield __1.prisma.level.findUnique({ where: { id: levelId }, include: {
+        // Fetch level with all question types and their responses
+        const level = yield __1.prisma.level.findUnique({
+            where: { id: levelId },
+            include: {
                 Questions: {
                     where: { ready: true },
-                    select: {
-                        questionTitle: true,
-                        questionHint: true,
-                        difficulty: true,
-                        id: true,
-                        Answers: true,
-                        QuestionResponse: true,
+                    include: {
+                        MCQAnswers: true,
+                        BlankAnswers: true,
+                        BlankSegments: true,
+                        MatchingPairs: true,
+                        QuestionResponse: {
+                            where: { responderId: userId }
+                        }
                     }
-                },
-            } });
+                }
+            }
+        });
         if (!level) {
             res.status(400).json({
-                "success": false,
-                "message": "level not found"
+                success: false,
+                message: "level not found"
             });
             return;
         }
-        // check if level already completed by user
         const totalQuestionsInLevel = level.Questions.length;
         if (totalQuestionsInLevel === 0) {
             res.status(400).json({
-                "success": false,
-                "message": "no questions in level, user cannot complete level"
+                success: false,
+                message: "no questions in level, user cannot complete level"
             });
             return;
         }
-        // all the questions in the level and its responses where the responderId=user.id
-        // [
-        //     {
-        //         question
-        //         questionResponseByUser:{
-        //         }
-        //     },
-        //     {
-        //     },
-        //     {
-        //     }
-        // ]
-        let noOfCorrectQuestions = 0;
-        let totalPointsEarnedInLevel = 0;
-        for (let i = 0; i < totalQuestionsInLevel; i++) {
-            const questionResponse = level.Questions[i].QuestionResponse
-                .find((questionResponse) => questionResponse.responderId === user.id);
-            console.log(questionResponse);
-            if (!questionResponse) {
-                continue;
+        // Analyze each question's response
+        const questionAnalysis = level.Questions.map(question => {
+            const response = question.QuestionResponse[0];
+            let wasCorrect = false;
+            if (response) {
+                switch (question.questionType) {
+                    case 'MCQ':
+                        wasCorrect = response.isCorrect;
+                        break;
+                    case 'FILL_IN_BLANK':
+                        // For fill-in-blank, check if all blanks were answered correctly
+                        const blankResponses = response.responseData;
+                        const totalBlanks = question.BlankSegments.filter(seg => seg.isBlank).length;
+                        const correctBlanks = Object.entries(blankResponses).filter(([index, value]) => {
+                            const correctAnswers = question.BlankAnswers.filter(ans => ans.blankIndex === parseInt(index) && ans.isCorrect);
+                            return correctAnswers.some(ans => ans.value.toLowerCase() === value.toLowerCase());
+                        }).length;
+                        wasCorrect = correctBlanks === totalBlanks;
+                        break;
+                    case 'MATCHING':
+                        // For matching, check if all pairs were matched correctly
+                        const matchingResponses = response.responseData;
+                        const correctMatches = Object.entries(matchingResponses).filter(([left, right]) => {
+                            return question.MatchingPairs.some(pair => pair.leftItem === left && pair.rightItem === right);
+                        }).length;
+                        wasCorrect = correctMatches === question.MatchingPairs.length;
+                        break;
+                }
             }
-            if (questionResponse.isCorrect) {
-                noOfCorrectQuestions++;
-            }
-            totalPointsEarnedInLevel += questionResponse.pointsEarned;
-        }
-        let isComplete = false;
-        const percentage = Math.fround(((noOfCorrectQuestions) / (totalQuestionsInLevel)) * 100);
-        if (noOfCorrectQuestions > level.passingQuestions) {
-            isComplete = true;
-        }
+            return {
+                question,
+                questionResponseByUser: response,
+                wasCorrect
+            };
+        });
+        const noOfCorrectQuestions = questionAnalysis.filter(qa => qa.wasCorrect).length;
+        const totalPointsEarnedInLevel = questionAnalysis.reduce((total, qa) => { var _a; return total + (((_a = qa.questionResponseByUser) === null || _a === void 0 ? void 0 : _a.pointsEarned) || 0); }, 0);
+        const percentage = Math.fround((noOfCorrectQuestions / totalQuestionsInLevel) * 100);
+        const isComplete = noOfCorrectQuestions >= level.passingQuestions;
         if (!isComplete) {
             res.status(400).json({
-                "success": false,
-                "message": "user cannot complete this level.Get better"
+                success: false,
+                message: "user cannot complete this level. Get better"
             });
             return;
         }
-        const openAiMessages = level.Questions.map((question) => {
-            const questionResponse = question.QuestionResponse.find((response) => response.responderId === user.id);
-            return Object.assign(Object.assign({}, question), { "questionResponseByUser": questionResponse });
-        });
-        console.log(openAiMessages);
-        // Give me  strength , weaknesses and recommendations based on the list of questions and its responses by the user.
+        // Prepare data for OpenAI
+        const openAiMessages = questionAnalysis.map(qa => (Object.assign(Object.assign({}, qa.question), { questionResponseByUser: qa.questionResponseByUser, wasCorrect: qa.wasCorrect, questionType: qa.question.questionType })));
         const openAIResponse = yield __1.openai.chat.completions.create({
             model: "gpt-3.5-turbo",
-            store: true,
             messages: [
                 {
                     role: "system",
-                    "content": `You are an assistant that provides feedback on user performance in a quiz. 
-                        Analyze the user's responses and provide feedback on the conceptual clarity based on the concept tested in the question in the following JSON format:
+                    content: `You are an assistant that provides feedback on user performance in a quiz. 
+                        Analyze the user's responses across different question types (MCQ, Fill-in-blank, and Matching) 
+                        and provide feedback on the conceptual clarity in the following JSON format:
                         {
-                            "remarks" : "You've shown strong understanding of basic concepts. A little more focus on applying concepts creatively, and you'll ace the next level!"
-                            "strengths": ["Good understanding of photosynthesis", "Decent understanding of human organs", ...],
+                            "remarks": "Personalized remarks based on performance",
+                            "strengths": ["strength1", "strength2", ...],
                             "weaknesses": ["weakness1", "weakness2", ...],
-                            "recommendations": ["Review the concepts of xyz", "Practice the concept using x biology textbook", ...]
+                            "recommendations": ["recommendation1", "recommendation2", ...]
                         }
-                        Each array should typically contain 2-3 points. Write remarks according to the performance , the above is just an example.`
+                        Each array should typically contain 2-3 points. Write remarks according to the performance.`
                 },
                 {
                     role: "user",
                     content: JSON.stringify(openAiMessages)
                 }
-            ],
+            ]
         });
         const feedback = openAIResponse.choices[0].message.content;
         const apiData = JSON.parse(feedback || "");
-        const strengths = apiData.strengths;
-        const weaknesses = apiData.weaknesses;
-        const recommendations = apiData.recommendations;
-        const remarks = apiData.remarks;
-        // Parsing feedback into structured JSON
-        const completedLevel = yield __1.prisma.userLevelComplete.findFirst({ where: { userId: user.id, levelId: level.id } });
+        // Handle level completion update
+        const completedLevel = yield __1.prisma.userLevelComplete.findFirst({
+            where: { userId: user.id, levelId: level.id }
+        });
         if (completedLevel) {
-            // is level is already completed by user i.e user has passed this level 
-            // if the points earned by user in completing this level currently > prev points earned 
-            //  update the entry in the userLevelComplete table
-            // else  do nothing and return success response for completing the level with 200 OK as no new 
-            if (totalPointsEarnedInLevel > completedLevel.totalPoints) {
-                yield __1.prisma.userLevelComplete.update({ where: { id: completedLevel.id }, data: {
-                        totalPoints: totalPointsEarnedInLevel,
-                        strengths: strengths,
-                        weaknesses: weaknesses,
-                        recommendations: recommendations,
-                    } });
+            if (totalPointsEarnedInLevel > completedLevel.totalPoints ||
+                noOfCorrectQuestions > completedLevel.noOfCorrectQuestions) {
+                yield __1.prisma.userLevelComplete.update({
+                    where: { id: completedLevel.id },
+                    data: {
+                        totalPoints: Math.max(totalPointsEarnedInLevel, completedLevel.totalPoints),
+                        noOfCorrectQuestions: Math.max(noOfCorrectQuestions, completedLevel.noOfCorrectQuestions),
+                        strengths: apiData.strengths,
+                        weaknesses: apiData.weaknesses,
+                        recommendations: apiData.recommendations,
+                    }
+                });
             }
-            if (noOfCorrectQuestions > completedLevel.noOfCorrectQuestions) {
-                yield __1.prisma.userLevelComplete.update({ where: { id: completedLevel.id }, data: {
-                        noOfCorrectQuestions: noOfCorrectQuestions,
-                        strengths: strengths,
-                        weaknesses: weaknesses,
-                        recommendations: recommendations,
-                    } });
-            }
-            res.status(200).json({
-                "success": true,
-                "message": "Level Completed",
-                "noOfCorrectQuestions": noOfCorrectQuestions,
-                "totalQuestions": totalQuestionsInLevel,
-                "percentage": percentage,
-                "isComplete": isComplete,
-                "strengths": strengths,
-                "weaknesses": weaknesses,
-                "recommendations": recommendations,
-                "remarks": remarks,
-            });
         }
         else {
-            yield __1.prisma.userLevelComplete.create({ data: {
+            yield __1.prisma.userLevelComplete.create({
+                data: {
                     userId: user.id,
                     levelId: level.id,
                     totalPoints: totalPointsEarnedInLevel,
                     noOfCorrectQuestions: noOfCorrectQuestions,
-                    strengths: strengths,
-                    weaknesses: weaknesses,
-                    recommendations: recommendations,
-                } });
-            res.status(201).json({
-                "success": true,
-                "message": "Level completed",
-                "noOfCorrectQuestions": noOfCorrectQuestions,
-                "totalQuestions": totalQuestionsInLevel,
-                "percentage": percentage,
-                "isComplete": isComplete,
-                "strengths": strengths,
-                "weaknesses": weaknesses,
-                "recommendations": recommendations,
-                "remarks": remarks,
+                    strengths: apiData.strengths,
+                    weaknesses: apiData.weaknesses,
+                    recommendations: apiData.recommendations,
+                }
             });
         }
+        res.status(completedLevel ? 200 : 201).json({
+            success: true,
+            message: "Level completed",
+            noOfCorrectQuestions,
+            totalQuestions: totalQuestionsInLevel,
+            percentage,
+            isComplete,
+            strengths: apiData.strengths,
+            weaknesses: apiData.weaknesses,
+            recommendations: apiData.recommendations,
+            remarks: apiData.remarks,
+        });
     }
     catch (error) {
-        console.log(error);
+        console.error(error);
         res.status(500).json({
-            "success": false,
-            "message": "internal server error when completing level "
+            success: false,
+            message: "internal server error when completing level"
         });
     }
 });

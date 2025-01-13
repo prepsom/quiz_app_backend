@@ -1,13 +1,41 @@
 import { Request, Response } from "express"
 import { prisma } from "..";
-import { Answer } from "@prisma/client";
+import { Answer, Difficulty, QuestionType } from "@prisma/client";
 
-type AddQuestionRequestBody = {
-    questionTitle:string;
-    difficulty:"EASY" | "MEDIUM" | "HARD"
-    levelId:string;
-    explanation:string;
+type BaseQuestionRequestBody = {
+    difficulty: Difficulty;
+    levelId: string;
+    questionTitle: string;
+    explanation: string;
+    questionType: QuestionType;
 }
+
+type MCQQuestionRequestBody = BaseQuestionRequestBody & {
+    questionType: 'MCQ';
+}
+
+type FillBlankQuestionRequestBody = BaseQuestionRequestBody & {
+    questionType: 'FILL_IN_BLANK';
+    segments: Array<{
+        text: string;
+        isBlank: boolean;
+        blankHint?: string;
+    }>;
+    answers: Array<{
+        value: string;
+        blankIndex: number;
+    }>;
+}
+
+type MatchingQuestionRequestBody = BaseQuestionRequestBody & {
+    questionType: 'MATCHING';
+    pairs: Array<{
+        leftItem: string;
+        rightItem: string;
+    }>;
+}
+
+type AddQuestionRequestBody = MCQQuestionRequestBody | FillBlankQuestionRequestBody | MatchingQuestionRequestBody;
 
 const getQuestionsByLevelHandler = async (req:Request,res:Response) => {
     // levelId and userId
@@ -75,36 +103,50 @@ const getQuestionsByLevelHandler = async (req:Request,res:Response) => {
     }
 }
 
-const addQuestionByLevelHandler = async (req:Request,res:Response) => {
+const isMCQQuestion = (data: AddQuestionRequestBody): data is MCQQuestionRequestBody => {
+    return data.questionType === 'MCQ';
+};
+
+const isFillBlankQuestion = (data: AddQuestionRequestBody): data is FillBlankQuestionRequestBody => {
+    return data.questionType === 'FILL_IN_BLANK';
+};
+
+const isMatchingQuestion = (data: AddQuestionRequestBody): data is MatchingQuestionRequestBody => {
+    return data.questionType === 'MATCHING';
+};
+
+const addQuestionByLevelHandler = async (req: Request, res: Response) => {
     try {
-        const {difficulty,levelId,questionTitle,explanation} = req.body as AddQuestionRequestBody;
+        const requestData = req.body as AddQuestionRequestBody;
         const userId = req.userId;
-    
+
+        console.log(requestData);
+
+        // Authorization checks remain the same
         const user = await prisma.user.findUnique({ where: { id: userId } });
-        if (!user || user.role=="STUDENT") {
+        if (!user || user.role === "STUDENT") {
             res.status(401).json({
                 success: false,
                 message: "Only teachers can add questions"
             });
             return;
         }
-    
+
         const level = await prisma.level.findUnique({
-            where: { id: levelId },
-            include: {
-                subject: true,
-            }
+            where: { id: requestData.levelId },
+            include: { subject: true }
         });
-    
+
         if (!level) {
-            res.status(400).json({
+            res.status(401).json({
                 success: false,
                 message: "Invalid level id"
             });
             return;
         }
-    
-        if(user.role==="TEACHER") {
+
+        // Teacher authorization check
+        if (user.role === "TEACHER") {
             const teacherGrade = await prisma.teacherGrade.findFirst({
                 where: {
                     teacherId: userId,
@@ -119,28 +161,157 @@ const addQuestionByLevelHandler = async (req:Request,res:Response) => {
                 return;
             }
         }
-    
-        const question = await prisma.question.create({
-            data: {
-                questionTitle,
-                difficulty,
-                levelId,
-                explanation,
-            }
-        });
 
-        res.status(201).json({
-            success: true,
-            question
-        });
+        // Validate request data based on question type
+        if (isFillBlankQuestion(requestData)) {
+            // Validate fill in blank specific data
+            console.log(!requestData.segments);
+            console.log(requestData.segments.length === 0);
+            if (!requestData.segments || requestData.segments.length === 0) {
+                res.status(400).json({
+                    success: false,
+                    message: "Fill in the blank questions must have at least one segment"
+                });
+                return;
+            }
+            if (!requestData.answers || requestData.answers.length === 0) {
+                res.status(400).json({
+                    success: false,
+                    message: "Fill in the blank questions must have at least one answer"
+                });
+                return;
+            }
+            
+            // Validate that answers correspond to blank segments
+            const blankIndices = requestData.segments
+                .map((segment, index) => segment.isBlank ? index : -1)
+                .filter(index => index !== -1);
+            
+            const invalidAnswers = requestData.answers.some(
+                answer => !blankIndices.includes(answer.blankIndex)
+            );
+            
+            if (invalidAnswers) {
+                res.status(400).json({
+                    success: false,
+                    message: "Answer indices must correspond to blank segments"
+                });
+                return;
+            }
+        }
+
+        try {
+            const isReady = validateReadyField(requestData);
+        
+            let question=null;
+            if (isMCQQuestion(requestData)) {
+                question = await prisma.question.create({
+                    data: {
+                        questionTitle: requestData.questionTitle,
+                        difficulty: requestData.difficulty,
+                        levelId: requestData.levelId,
+                        explanation: requestData.explanation,
+                        questionType: 'MCQ',
+                        ready: false,  // Use the validated ready value
+                    }
+                });
+            } else if (isFillBlankQuestion(requestData)) {
+                console.log('FILL IN THE BLANK QUESTION CREATED');
+                question = await prisma.question.create({
+                    data: {
+                        questionTitle: requestData.questionTitle,
+                        difficulty: requestData.difficulty,
+                        levelId: requestData.levelId,
+                        explanation: requestData.explanation,
+                        questionType: 'FILL_IN_BLANK',
+                        ready: isReady, // Use the validated ready value
+                        BlankSegments: {
+                            createMany: {
+                                data: requestData.segments.map((segment, index) => ({
+                                    text: segment.text,
+                                    isBlank: segment.isBlank,
+                                    blankHint: segment.blankHint || null,
+                                    order: index
+                                }))
+                            }
+                        },
+                        BlankAnswers: {
+                            createMany: {
+                                data: requestData.answers.map(answer => ({
+                                    value: answer.value,
+                                    blankIndex: answer.blankIndex,
+                                    isCorrect: true
+                                }))
+                            }
+                        }
+                    }
+                });
+            } else if (isMatchingQuestion(requestData)) {
+                question = await prisma.question.create({
+                    data: {
+                        questionTitle: requestData.questionTitle,
+                        difficulty: requestData.difficulty,
+                        levelId: requestData.levelId,
+                        explanation: requestData.explanation,
+                        questionType: 'MATCHING',
+                        ready: isReady, // Use the validated ready value
+                        MatchingPairs: {
+                            createMany: {
+                                data: requestData.pairs.map((pair, index) => ({
+                                    leftItem: pair.leftItem,
+                                    rightItem: pair.rightItem,
+                                    order: index
+                                }))
+                            }
+                        }
+                    }
+                });
+            }
+        
+            res.status(201).json({
+                success: true,
+                data: question
+            });
+        } catch (error) {
+            console.error('Error creating question:', error);
+            res.status(500).json({
+                success: false,
+                message: "Failed to create question",
+                error: error instanceof Error ? error.message : "Unknown error"
+            });
+        }
     } catch (error) {
-        console.log(error);
+        console.error('Handler error:', error);
         res.status(500).json({
             success: false,
-            message: "Internal server error when adding question"
+            message: "Internal server error when adding question",
+            error: error instanceof Error ? error.message : "Unknown error"
         });
     }
-}
+};
+
+const validateReadyField = (requestData: AddQuestionRequestBody): boolean => {
+     if (isFillBlankQuestion(requestData)) {
+        // Fill in the blank: At least one blank segment and corresponding answers
+        if (!requestData.segments || requestData.segments.length === 0) return false;
+        
+        const blankIndices = requestData.segments
+            .map((segment, index) => (segment.isBlank ? index : -1))
+            .filter(index => index !== -1);
+        
+        const validAnswers = requestData.answers && requestData.answers.length > 0;
+        const allAnswersMatchBlanks = requestData.answers?.every(answer =>
+            blankIndices.includes(answer.blankIndex)
+        );
+        
+        return validAnswers && allAnswersMatchBlanks;
+    } else if (isMatchingQuestion(requestData)) {
+        // Matching: Ensure at least 3 valid pairs
+        return requestData.pairs && requestData.pairs.length >= 3;
+    }
+    
+    return false; // Default to not ready for unrecognized question types
+};
 
 
 const deleteQuestionHandler = async (req:Request,res:Response) => {
@@ -197,6 +368,7 @@ const deleteQuestionHandler = async (req:Request,res:Response) => {
         });
     }
 }
+
 const getQuestionWithAnswers = async (req: Request, res: Response) => {
     try {
         const { questionId } = req.params as { questionId: string };
@@ -205,97 +377,168 @@ const getQuestionWithAnswers = async (req: Request, res: Response) => {
         const user = await prisma.user.findUnique({ where: { id: userId } });
         if (!user) {
             res.status(400).json({
-                "success": false,
-                "message": "invalid user id"
-            })
+                success: false,
+                message: "invalid user id"
+            });
             return;
         }
 
+        // Get question with all related data based on question type
         const question = await prisma.question.findUnique({
-            where: { id: questionId }, include: {
+            where: { id: questionId },
+            include: {
                 level: {
                     select: {
                         subject: true,
                     }
+                },
+                MCQAnswers: true,
+                BlankSegments: {
+                    orderBy: {
+                        order: 'asc'
+                    }
+                },
+                BlankAnswers: true,
+                MatchingPairs: {
+                    orderBy: {
+                        order: 'asc'
+                    }
                 }
             }
         });
+
         if (!question) {
             res.status(400).json({
-                "success": false,
-                "message": "question not found"
+                success: false,
+                message: "question not found"
             });
             return;
         }
 
         const gradeId = question.level.subject.gradeId;
 
+        // Authorization checks
         if (user.role === "STUDENT" && user.gradeId !== gradeId) {
             res.status(401).json({
-                "success": false,
-                "message": "student cannot read questions for this grade"
-            })
+                success: false,
+                message: "student cannot read questions for this grade"
+            });
             return;
         }
 
         if (user.role === "TEACHER") {
-            const teachesGrade = await prisma.teacherGrade.findFirst({ where: { teacherId: user.id, gradeId: gradeId } });
+            const teachesGrade = await prisma.teacherGrade.findFirst({
+                where: { teacherId: user.id, gradeId: gradeId }
+            });
             if (!teachesGrade) {
                 res.status(401).json({
-                    "success": false,
-                    "message": "teacher cannot read questions for this grade"
-                })
+                    success: false,
+                    message: "teacher cannot read questions for this grade"
+                });
                 return;
             }
         }
 
-        const questionWithAnswers = await prisma.question.findUnique({
-            where: { id: question.id }, include: {
-                Answers: true,
+        // Process question data based on type
+        let processedQuestion;
+        switch (question.questionType) {
+            case "MCQ":
+                processedQuestion = processMCQQuestion(question, user.role === "STUDENT");
+                break;
+            case "FILL_IN_BLANK":
+                processedQuestion = processFillInBlankQuestion(question, user.role === "STUDENT");
+                break;
+            case "MATCHING":
+                processedQuestion = processMatchingQuestion(question, user.role === "STUDENT");
+                break;
+            default:
+                res.status(400).json({
+                    success: false,
+                    message: "invalid question type"
+                });
+                return;
             }
-        });
-
-        // Fisher-Yates shuffle algorithm
-        const shuffleArray = <T>(array: T[]): T[] => {
-            const shuffled = [...array];
-            for (let i = shuffled.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-            }
-            return shuffled;
-        };
-
-        // Get and shuffle answers based on user role
-        let answers = user.role === "STUDENT" 
-            ? questionWithAnswers?.Answers.map((answer: Answer) => ({
-                id: answer.id,
-                value: answer.value,
-                questionId: answer.questionId,
-            }))
-            : questionWithAnswers?.Answers;
-
-        // Shuffle the answers array if it exists
-        if (answers) {
-            answers = shuffleArray(answers);
-        }
-
-        const response = {
-            ...questionWithAnswers,
-            "Answers": answers,
-        }
 
         res.status(200).json({
-            "success": true,
-            "question": response,
+            success: true,
+            question: processedQuestion
         });
+
     } catch (error) {
-        console.log(error);
+        console.error(error);
         res.status(500).json({
-            "success": false,
-            "message": "internal server error when getting question with its answers"
+            success: false,
+            message: "internal server error when getting question with its answers"
         });
     }
-}
+};
+
+// Helper function to shuffle arrays
+const shuffleArray = <T>(array: T[]): T[] => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+};
+
+const processMCQQuestion = (question: any, isStudent: boolean) => {
+    let answers = question.MCQAnswers;
+    
+    if (isStudent) {
+        // Remove isCorrect field for students
+        answers = answers.map((answer: Answer) => ({
+            id: answer.id,
+            value: answer.value,
+            questionId: answer.questionId
+        }));
+    }
+    
+    return {
+        ...question,
+        MCQAnswers: shuffleArray(answers),
+        BlankSegments: undefined,
+        BlankAnswers: undefined,
+        MatchingPairs: undefined
+    };
+};
+
+const processFillInBlankQuestion = (question: any, isStudent: boolean) => {
+    const result = {
+        ...question,
+        MCQAnswers: undefined,
+        BlankSegments: question.BlankSegments,
+        BlankAnswers: isStudent ? undefined : question.BlankAnswers,
+        MatchingPairs: undefined
+    };
+
+    return result;
+};
+
+const processMatchingQuestion = (question: any, isStudent: boolean) => {
+    let pairs = question.MatchingPairs;
+    
+    if (isStudent) {
+        // Shuffle right items for students while maintaining the correct order of left items
+        const rightItems = shuffleArray(pairs.map((pair:any) => pair.rightItem));
+        pairs = pairs.map((pair:any, index:any) => ({
+            id: pair.id,
+            leftItem: pair.leftItem,
+            rightItem: rightItems[index],
+            order: pair.order
+        }));
+    }
+
+    return {
+        ...question,
+        MCQAnswers: undefined,
+        BlankSegments: undefined,
+        BlankAnswers: undefined,
+        MatchingPairs: pairs
+    };
+};
+
 
 
 const getAnsweredQuestionsByLevelHandler = async (req:Request,res:Response) => {

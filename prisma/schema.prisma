@@ -40,6 +40,7 @@ model User {
   UserLevelComplete UserLevelComplete[]
   lastLogin         DateTime?
 }
+
 // Junction table for Teacher-Grade many-to-many relationship
 model TeacherGrade {
   id        String   @id @default(uuid())
@@ -74,13 +75,19 @@ model Level {
 
 model Question {
   id               String             @id @default(uuid())
+  questionType     QuestionType       @default(MCQ)
   questionTitle    String
   questionHint     String?
   difficulty       Difficulty         @default(EASY)
   level            Level              @relation(fields: [levelId], references: [id], onDelete: Cascade)
   levelId          String
   explanation      String             @default("")
-  Answers          Answer[]
+
+  MCQAnswers       Answer[]
+  // New relations for other question types
+  BlankSegments    BlankSegment[] // ["" , "is the process that plants get sunlight" ," " , " asdlaksd "]
+  BlankAnswers     BlankAnswer[]
+  MatchingPairs    MatchingPair[]
   QuestionResponse QuestionResponse[]
   ready            Boolean            @default(false)
 }
@@ -94,14 +101,48 @@ model Answer {
   QuestionResponse QuestionResponse[]
 }
 
+model BlankSegment {
+  id         String   @id @default(uuid())
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  questionId String
+  text       String
+  isBlank    Boolean  @default(false)
+  order      Int
+  blankHint  String?
+}
+
+// New model for fill-in-blank answers
+model BlankAnswer {
+  id         String   @id @default(uuid())
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  questionId String
+  value      String
+  blankIndex Int // Corresponds to the blank's position in the question
+  isCorrect  Boolean  @default(true)
+  // Can store alternative answers here too
+}
+
+// New model for matching pairs
+model MatchingPair {
+  id         String   @id @default(uuid())
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  questionId String
+  leftItem   String
+  rightItem  String
+  order      Int // For maintaining pair order in display
+}
+
 model QuestionResponse {
   id             String   @id @default(uuid())
   question       Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
   questionId     String
   responder      User     @relation(fields: [responderId], references: [id], onDelete: Cascade)
   responderId    String
-  chosenAnswer   Answer   @relation(fields: [chosenAnswerId], references: [id], onDelete: Cascade)
-  chosenAnswerId String
+  // Make these optional since they're only for MCQ
+  chosenAnswer   Answer?  @relation(fields: [chosenAnswerId], references: [id], onDelete: Cascade)
+  chosenAnswerId String?
+  // New field for storing other types of responses
+  responseData   Json? // Stores fill-in-blank answers or matching pairs
   pointsEarned   Int
   isCorrect      Boolean
   responseTime   Int
@@ -123,6 +164,12 @@ model UserLevelComplete {
   recommendations      String[]
 
   @@unique([userId, levelId])
+}
+
+enum QuestionType {
+  MCQ
+  FILL_IN_BLANK
+  MATCHING
 }
 
 enum Role {

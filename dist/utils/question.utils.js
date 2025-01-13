@@ -15,10 +15,10 @@ function updateQuestionReadyStatus(questionId) {
     return __awaiter(this, void 0, void 0, function* () {
         const question = yield __1.prisma.question.findUnique({
             where: { id: questionId },
-            include: { Answers: true }
+            include: { MCQAnswers: true }
         });
-        const ready = (question === null || question === void 0 ? void 0 : question.Answers.length) === 4 &&
-            question.Answers.some(a => a.isCorrect);
+        const ready = (question === null || question === void 0 ? void 0 : question.MCQAnswers.length) === 4 &&
+            question.MCQAnswers.some(a => a.isCorrect);
         yield __1.prisma.question.update({
             where: { id: questionId },
             data: { ready }
