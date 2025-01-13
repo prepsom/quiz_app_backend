@@ -768,6 +768,50 @@ const getNextLevelHandler = async (req:Request,res:Response) => {
     }
 }
 
+
+const getAllCompletedLevelsByUser = async (req:Request,res:Response) => {
+    try {
+        const userId = req.userId;
+        const user = await prisma.user.findUnique({where:{id:userId}});
+        if(!user) {
+            res.status(400).json({
+                "success":false,
+                "message":"invalid user id"
+            });
+            return;
+        }
+    
+        // we have the logged in user id , get all levels that have been completed by this user
+        const completedLevelsByUser = await prisma.userLevelComplete.findMany({where:{userId:user.id},include:{
+            level:{
+                include:{
+                    subject:true,
+                }
+            },  
+        }});
+    
+        const completedLevelsWithScores = completedLevelsByUser.map((item) => {
+            return {
+                ...item.level,
+                "totalPoints":item.totalPoints,
+                "noOfCorrectQuestions":item.noOfCorrectQuestions,
+                "strengths":item.strengths,
+                "recommendations":item.recommendations,
+                "weaknesses":item.weaknesses,
+            }
+        });
+
+        
+        res.status(200).json({
+            "success":true,
+            "completedLevels":completedLevelsWithScores,
+        });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({"success":false,"message":"internal server error when getting completed levels"});
+    }
+}
+
 export {
     addLevelHandler,
     getLevelsBySubjectHandler,
@@ -779,4 +823,5 @@ export {
     completeLevelHandler,
     getCompletedLevelsBySubjectHandler,
     getNextLevelHandler,
+    getAllCompletedLevelsByUser,
 }

@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getNextLevelHandler = exports.getCompletedLevelsBySubjectHandler = exports.completeLevelHandler = exports.getLevelById = exports.getLevelQuestions = exports.getLevelResultsHandler = exports.updateLevelHandler = exports.deleteLevelHandler = exports.getLevelsBySubjectHandler = exports.addLevelHandler = void 0;
+exports.getAllCompletedLevelsByUser = exports.getNextLevelHandler = exports.getCompletedLevelsBySubjectHandler = exports.completeLevelHandler = exports.getLevelById = exports.getLevelQuestions = exports.getLevelResultsHandler = exports.updateLevelHandler = exports.deleteLevelHandler = exports.getLevelsBySubjectHandler = exports.addLevelHandler = void 0;
 const __1 = require("..");
 const addLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     // who can add levels -> teachers 
@@ -652,3 +652,36 @@ const getNextLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, func
     }
 });
 exports.getNextLevelHandler = getNextLevelHandler;
+const getAllCompletedLevelsByUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const userId = req.userId;
+        const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            res.status(400).json({
+                "success": false,
+                "message": "invalid user id"
+            });
+            return;
+        }
+        // we have the logged in user id , get all levels that have been completed by this user
+        const completedLevelsByUser = yield __1.prisma.userLevelComplete.findMany({ where: { userId: user.id }, include: {
+                level: {
+                    include: {
+                        subject: true,
+                    }
+                },
+            } });
+        const completedLevelsWithScores = completedLevelsByUser.map((item) => {
+            return Object.assign(Object.assign({}, item.level), { "totalPoints": item.totalPoints, "noOfCorrectQuestions": item.noOfCorrectQuestions, "strengths": item.strengths, "recommendations": item.recommendations, "weaknesses": item.weaknesses });
+        });
+        res.status(200).json({
+            "success": true,
+            "completedLevels": completedLevelsWithScores,
+        });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({ "success": false, "message": "internal server error when getting completed levels" });
+    }
+});
+exports.getAllCompletedLevelsByUser = getAllCompletedLevelsByUser;
