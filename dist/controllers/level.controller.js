@@ -701,6 +701,8 @@ const getNextLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, func
 exports.getNextLevelHandler = getNextLevelHandler;
 const getAllCompletedLevelsByUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
+        const COMPLETED_LEVELS_PER_PAGE = 10;
+        const { page, limit } = req.query;
         const userId = req.userId;
         const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
         if (!user) {
@@ -710,6 +712,12 @@ const getAllCompletedLevelsByUser = (req, res) => __awaiter(void 0, void 0, void
             });
             return;
         }
+        const pageNum = page !== undefined && page !== "" ? parseInt(page) : 1;
+        const limitNum = limit !== undefined && limit !== ""
+            ? parseInt(limit)
+            : COMPLETED_LEVELS_PER_PAGE;
+        const skip = pageNum * limitNum - limitNum;
+        console.log(page, limit);
         // we have the logged in user id , get all levels that have been completed by this user
         const completedLevelsByUser = yield __1.prisma.userLevelComplete.findMany({
             where: { userId: user.id },
@@ -720,13 +728,22 @@ const getAllCompletedLevelsByUser = (req, res) => __awaiter(void 0, void 0, void
                     },
                 },
             },
+            orderBy: {
+                level: {
+                    position: "asc",
+                },
+            },
+            skip: skip,
+            take: limitNum,
         });
         const completedLevelsWithScores = completedLevelsByUser.map((item) => {
             return Object.assign(Object.assign({}, item.level), { totalPoints: item.totalPoints, noOfCorrectQuestions: item.noOfCorrectQuestions, strengths: item.strengths, recommendations: item.recommendations, weaknesses: item.weaknesses });
         });
+        const totalCompletedLevelsByUserCount = yield __1.prisma.userLevelComplete.count({ where: { userId: user.id } });
         res.status(200).json({
             success: true,
             completedLevels: completedLevelsWithScores,
+            noOfPages: Math.ceil(totalCompletedLevelsByUserCount / limitNum),
         });
     }
     catch (error) {
@@ -740,6 +757,8 @@ const getAllCompletedLevelsByUser = (req, res) => __awaiter(void 0, void 0, void
 exports.getAllCompletedLevelsByUser = getAllCompletedLevelsByUser;
 const getAllCompletedLevelsByUserInSubject = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
+        const COMPLETED_LEVELS_PER_PAGE = 10;
+        const { limit, page } = req.query;
         const { subjectId } = req.params;
         const userId = req.userId;
         const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
@@ -750,6 +769,11 @@ const getAllCompletedLevelsByUserInSubject = (req, res) => __awaiter(void 0, voi
             });
             return;
         }
+        const pageNum = page !== undefined && page !== "" ? parseInt(page) : 1;
+        const limitNum = limit !== undefined && limit !== ""
+            ? parseInt(limit)
+            : COMPLETED_LEVELS_PER_PAGE;
+        const skip = pageNum * limitNum - limitNum;
         const subject = yield __1.prisma.subject.findUnique({
             where: { id: subjectId },
         });
@@ -773,13 +797,29 @@ const getAllCompletedLevelsByUserInSubject = (req, res) => __awaiter(void 0, voi
                     },
                 },
             },
+            orderBy: {
+                level: {
+                    position: "asc",
+                },
+            },
+            skip: skip,
+            take: limitNum,
         });
         const completedLevelsInSubjectWithMetaData = completedLevelsByUser.map((completedLevel) => {
             return Object.assign(Object.assign({}, completedLevel.level), { totalPoints: completedLevel.totalPoints, noOfCorrectQuestions: completedLevel.noOfCorrectQuestions, strengths: completedLevel.strengths, weaknesses: completedLevel.weaknesses, recommendations: completedLevel.recommendations });
         });
+        const totalCompletedLevelsByUserInSubject = yield __1.prisma.userLevelComplete.count({
+            where: {
+                userId: user.id,
+                level: {
+                    subjectId: subject.id,
+                },
+            },
+        });
         res.status(200).json({
             success: true,
             completedLevelsInSubject: completedLevelsInSubjectWithMetaData,
+            noOfPages: Math.ceil(totalCompletedLevelsByUserInSubject / limitNum),
         });
     }
     catch (error) {

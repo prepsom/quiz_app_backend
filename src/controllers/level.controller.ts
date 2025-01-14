@@ -840,6 +840,8 @@ const getNextLevelHandler = async (req: Request, res: Response) => {
 
 const getAllCompletedLevelsByUser = async (req: Request, res: Response) => {
   try {
+    const COMPLETED_LEVELS_PER_PAGE = 10;
+    const { page, limit } = req.query as { page: string; limit: string };
     const userId = req.userId;
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
@@ -849,6 +851,16 @@ const getAllCompletedLevelsByUser = async (req: Request, res: Response) => {
       });
       return;
     }
+
+    const pageNum = page !== undefined && page !== "" ? parseInt(page) : 1;
+    const limitNum =
+      limit !== undefined && limit !== ""
+        ? parseInt(limit)
+        : COMPLETED_LEVELS_PER_PAGE;
+
+    const skip = pageNum * limitNum - limitNum;
+
+    console.log(page, limit);
 
     // we have the logged in user id , get all levels that have been completed by this user
     const completedLevelsByUser = await prisma.userLevelComplete.findMany({
@@ -860,6 +872,13 @@ const getAllCompletedLevelsByUser = async (req: Request, res: Response) => {
           },
         },
       },
+      orderBy: {
+        level: {
+          position: "asc",
+        },
+      },
+      skip: skip,
+      take: limitNum,
     });
 
     const completedLevelsWithScores = completedLevelsByUser.map((item) => {
@@ -873,9 +892,13 @@ const getAllCompletedLevelsByUser = async (req: Request, res: Response) => {
       };
     });
 
+    const totalCompletedLevelsByUserCount =
+      await prisma.userLevelComplete.count({ where: { userId: user.id } });
+
     res.status(200).json({
       success: true,
       completedLevels: completedLevelsWithScores,
+      noOfPages: Math.ceil(totalCompletedLevelsByUserCount / limitNum),
     });
   } catch (error) {
     console.log(error);
@@ -891,6 +914,8 @@ const getAllCompletedLevelsByUserInSubject = async (
   res: Response
 ) => {
   try {
+    const COMPLETED_LEVELS_PER_PAGE = 10;
+    const { limit, page } = req.query as { page: string; limit: string };
     const { subjectId } = req.params as { subjectId: string };
     const userId = req.userId;
     const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -901,6 +926,14 @@ const getAllCompletedLevelsByUserInSubject = async (
       });
       return;
     }
+
+    const pageNum = page !== undefined && page !== "" ? parseInt(page) : 1;
+    const limitNum =
+      limit !== undefined && limit !== ""
+        ? parseInt(limit)
+        : COMPLETED_LEVELS_PER_PAGE;
+
+    const skip = pageNum * limitNum - limitNum;
 
     const subject = await prisma.subject.findUnique({
       where: { id: subjectId },
@@ -926,6 +959,13 @@ const getAllCompletedLevelsByUserInSubject = async (
           },
         },
       },
+      orderBy: {
+        level: {
+          position: "asc",
+        },
+      },
+      skip: skip,
+      take: limitNum,
     });
 
     const completedLevelsInSubjectWithMetaData = completedLevelsByUser.map(
@@ -941,9 +981,20 @@ const getAllCompletedLevelsByUserInSubject = async (
       }
     );
 
+    const totalCompletedLevelsByUserInSubject =
+      await prisma.userLevelComplete.count({
+        where: {
+          userId: user.id,
+          level: {
+            subjectId: subject.id,
+          },
+        },
+      });
+
     res.status(200).json({
       success: true,
       completedLevelsInSubject: completedLevelsInSubjectWithMetaData,
+      noOfPages: Math.ceil(totalCompletedLevelsByUserInSubject / limitNum),
     });
   } catch (error) {
     console.log(error);
