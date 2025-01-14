@@ -12,6 +12,7 @@ router.get("/next-level/:levelId", auth_middleware_1.authenticateUser, level_con
 router.post("/", auth_middleware_1.authenticateUser, level_controller_1.addLevelHandler);
 router.post("/:levelId/complete", auth_middleware_1.authenticateUser, level_controller_1.completeLevelHandler);
 router.get("/levels/completed", auth_middleware_1.authenticateUser, level_controller_1.getAllCompletedLevelsByUser);
+router.get("/levels-with-metadata/:subjectId/completed", auth_middleware_1.authenticateUser, level_controller_1.getAllCompletedLevelsByUserInSubject);
 router.get("/levels/:subjectId", auth_middleware_1.authenticateUser, level_controller_1.getLevelsBySubjectHandler);
 router.get("/levels/:subjectId/completed", auth_middleware_1.authenticateUser, level_controller_1.getCompletedLevelsBySubjectHandler);
 router.get("/:levelId", level_controller_1.getLevelById);

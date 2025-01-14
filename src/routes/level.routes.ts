@@ -1,23 +1,41 @@
-
-import express from "express"
+import express from "express";
 import { authenticateUser } from "../middlewares/auth.middleware";
-import { addLevelHandler, completeLevelHandler, deleteLevelHandler, getAllCompletedLevelsByUser, getCompletedLevelsBySubjectHandler, getLevelById, getLevelQuestions, getLevelResultsHandler, getLevelsBySubjectHandler, getNextLevelHandler, updateLevelHandler } from "../controllers/level.controller";
-
+import {
+  addLevelHandler,
+  completeLevelHandler,
+  deleteLevelHandler,
+  getAllCompletedLevelsByUser,
+  getAllCompletedLevelsByUserInSubject,
+  getCompletedLevelsBySubjectHandler,
+  getLevelById,
+  getLevelQuestions,
+  getLevelResultsHandler,
+  getLevelsBySubjectHandler,
+  getNextLevelHandler,
+  updateLevelHandler,
+} from "../controllers/level.controller";
 
 const router = express.Router();
 
-
-router.get("/:levelId/questions",authenticateUser,getLevelQuestions);
-router.get("/next-level/:levelId",authenticateUser,getNextLevelHandler);
-router.post("/",authenticateUser,addLevelHandler);
-router.post("/:levelId/complete",authenticateUser,completeLevelHandler)
-router.get("/levels/completed",authenticateUser,getAllCompletedLevelsByUser);
-router.get("/levels/:subjectId",authenticateUser,getLevelsBySubjectHandler);
-router.get("/levels/:subjectId/completed",authenticateUser,getCompletedLevelsBySubjectHandler);
-router.get("/:levelId",getLevelById);
-router.delete("/:levelId",authenticateUser,deleteLevelHandler);
-router.put("/:levelId",authenticateUser,updateLevelHandler);
-router.get("/:levelId/results",authenticateUser,getLevelResultsHandler);
+router.get("/:levelId/questions", authenticateUser, getLevelQuestions);
+router.get("/next-level/:levelId", authenticateUser, getNextLevelHandler);
+router.post("/", authenticateUser, addLevelHandler);
+router.post("/:levelId/complete", authenticateUser, completeLevelHandler);
+router.get("/levels/completed", authenticateUser, getAllCompletedLevelsByUser);
+router.get(
+  "/levels-with-metadata/:subjectId/completed",
+  authenticateUser,
+  getAllCompletedLevelsByUserInSubject
+);
+router.get("/levels/:subjectId", authenticateUser, getLevelsBySubjectHandler);
+router.get(
+  "/levels/:subjectId/completed",
+  authenticateUser,
+  getCompletedLevelsBySubjectHandler
+);
+router.get("/:levelId", getLevelById);
+router.delete("/:levelId", authenticateUser, deleteLevelHandler);
+router.put("/:levelId", authenticateUser, updateLevelHandler);
+router.get("/:levelId/results", authenticateUser, getLevelResultsHandler);
 
 export default router;
-
