@@ -14,7 +14,7 @@ const __1 = require("..");
 const POINTS_MAP = {
     EASY: 10,
     MEDIUM: 15,
-    HARD: 20
+    HARD: 20,
 };
 const TIME_BONUS_THRESHOLD = 60; // seconds
 const TIME_BONUS_POINTS = 2;
@@ -31,13 +31,13 @@ const answerQuestionHandler = (req, res) => __awaiter(void 0, void 0, void 0, fu
                     MCQAnswers: true,
                     BlankAnswers: true,
                     MatchingPairs: true,
-                }
-            })
+                },
+            }),
         ]);
         if (!user || !question) {
             res.status(400).json({
                 success: false,
-                message: !user ? "Invalid user ID" : "Question not found"
+                message: !user ? "Invalid user ID" : "Question not found",
             });
             return;
         }
@@ -53,51 +53,55 @@ const answerQuestionHandler = (req, res) => __awaiter(void 0, void 0, void 0, fu
         const pointsEarned = calculatePoints(validationResult.isCorrect, question.difficulty, responseData.timeTaken);
         // Update or create question response
         const existingResponse = yield __1.prisma.questionResponse.findFirst({
-            where: { responderId: user.id, questionId: question.id }
+            where: { responderId: user.id, questionId: question.id },
         });
         const responsePayload = {
             isCorrect: validationResult.isCorrect,
             pointsEarned,
             responseTime: responseData.timeTaken,
-            chosenAnswerId: 'selectedAnswerId' in responseData ? responseData.selectedAnswerId : null,
-            responseData: 'selectedAnswerId' in responseData ? null : responseData,
+            chosenAnswerId: "selectedAnswerId" in responseData
+                ? responseData.selectedAnswerId
+                : null,
+            responseData: "selectedAnswerId" in responseData ? null : responseData,
             questionId: question.id,
             responderId: userId,
         };
         const questionResponse = existingResponse
-            ? yield __1.prisma.questionResponse.update({ where: { id: existingResponse.id }, data: Object.assign(Object.assign({}, responsePayload), { createdAt: new Date(Date.now()) })
+            ? yield __1.prisma.questionResponse.update({
+                where: { id: existingResponse.id },
+                data: Object.assign(Object.assign({}, responsePayload), { createdAt: new Date(Date.now()) }),
             })
             : yield __1.prisma.questionResponse.create({
-                data: responsePayload
+                data: responsePayload,
             });
         res.status(existingResponse ? 200 : 201).json({
             success: true,
             message: "Response recorded successfully",
             questionResponse,
-            correctData: validationResult.correctData
+            correctData: validationResult.correctData,
         });
     }
     catch (error) {
         console.error("Error in answerQuestionHandler:", error);
         res.status(500).json({
             success: false,
-            message: "Internal server error when responding to question"
+            message: "Internal server error when responding to question",
         });
     }
 });
 exports.answerQuestionHandler = answerQuestionHandler;
 const validateResponse = (responseData, question) => __awaiter(void 0, void 0, void 0, function* () {
     switch (responseData.type) {
-        case 'MCQ':
+        case "MCQ":
             return validateMCQResponse(responseData, question);
-        case 'FILL_IN_BLANK':
+        case "FILL_IN_BLANK":
             return validateFillInBlankResponse(responseData, question);
-        case 'MATCHING':
+        case "MATCHING":
             return validateMatchingResponse(responseData, question);
         default:
             return {
                 success: false,
-                message: "Invalid question type"
+                message: "Invalid question type",
             };
     }
 });
@@ -106,14 +110,14 @@ const validateMCQResponse = (response, question) => {
     if (!selectedAnswer) {
         return {
             success: false,
-            message: "Selected answer is not an option for the question"
+            message: "Selected answer is not an option for the question",
         };
     }
     const correctAnswer = question.MCQAnswers.find((answer) => answer.isCorrect);
     return {
         success: true,
         isCorrect: selectedAnswer.isCorrect,
-        correctData: { correctAnswerId: correctAnswer === null || correctAnswer === void 0 ? void 0 : correctAnswer.id }
+        correctData: { correctAnswerId: correctAnswer === null || correctAnswer === void 0 ? void 0 : correctAnswer.id },
     };
 };
 const validateFillInBlankResponse = (response, question) => {
@@ -126,17 +130,31 @@ const validateFillInBlankResponse = (response, question) => {
         acc[answer.blankIndex].push(answer.value.toLowerCase().trim());
         return acc;
     }, {});
-    // Check each submitted answer
-    response.answers.forEach(answer => {
-        const correctAnswersForBlank = correctAnswersByIndex[answer.blankIndex] || [];
-        if (!correctAnswersForBlank.includes(answer.value.toLowerCase().trim())) {
+    // Create a map of user answers for easy lookup
+    const userAnswerMap = new Map(response.answers.map((answer) => [
+        answer.blankIndex,
+        answer.value.toLowerCase().trim(),
+    ]));
+    // Check if all required blanks are filled and correct
+    for (const [blankIndex, correctValues] of Object.entries(correctAnswersByIndex)) {
+        const userAnswer = userAnswerMap.get(parseInt(blankIndex));
+        // If no answer provided for this blank or answer is incorrect
+        if (!userAnswer || !correctValues.includes(userAnswer)) {
             isCorrect = false;
+            break;
         }
-    });
+    }
+    // Check if user provided answers for non-existent blanks
+    for (const [blankIndex] of userAnswerMap) {
+        if (!correctAnswersByIndex[blankIndex]) {
+            isCorrect = false;
+            break;
+        }
+    }
     return {
         success: true,
         isCorrect,
-        correctData: { correctAnswers: correctAnswersByIndex }
+        correctData: { correctAnswers: correctAnswersByIndex },
     };
 };
 const validateMatchingResponse = (response, question) => {
@@ -145,10 +163,10 @@ const validateMatchingResponse = (response, question) => {
     // Convert correct pairs to a map for easy lookup
     const correctPairsMap = new Map(correctPairs.map((pair) => [
         pair.leftItem.toLowerCase().trim(),
-        pair.rightItem.toLowerCase().trim()
+        pair.rightItem.toLowerCase().trim(),
     ]));
     // Check each submitted pair
-    response.pairs.forEach(pair => {
+    response.pairs.forEach((pair) => {
         const correctRight = correctPairsMap.get(pair.leftItem.toLowerCase().trim());
         if (correctRight !== pair.rightItem.toLowerCase().trim()) {
             isCorrect = false;
@@ -157,7 +175,7 @@ const validateMatchingResponse = (response, question) => {
     return {
         success: true,
         isCorrect,
-        correctData: { correctPairs }
+        correctData: { correctPairs },
     };
 };
 const calculatePoints = (isCorrect, difficulty, timeTaken) => {
