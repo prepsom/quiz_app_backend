@@ -19,67 +19,74 @@ const getQuestionsByLevelHandler = (req, res) => __awaiter(void 0, void 0, void 
         const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
         if (!user) {
             res.status(400).json({
-                "success": false,
-                "message": "invalid user id"
+                success: false,
+                message: "invalid user id",
             });
             return;
         }
-        const level = yield __1.prisma.level.findUnique({ where: { id: levelId }, include: {
+        const level = yield __1.prisma.level.findUnique({
+            where: { id: levelId },
+            include: {
                 subject: true,
-            } });
+            },
+        });
         if (!level) {
             res.status(400).json({
-                "success": false,
-                "message": "invalid level id"
+                success: false,
+                message: "invalid level id",
             });
             return;
         }
         // level exists so can get questions under a level
         // if the user is a student then to see questions under a level
-        // student has to be in the same grade the level is in 
+        // student has to be in the same grade the level is in
         const gradeId = level.subject.gradeId;
         if (user.role === "STUDENT" && user.gradeId !== gradeId) {
             res.status(401).json({
-                "success": false,
-                "message": "user cannot access questions for this level"
+                success: false,
+                message: "user cannot access questions for this level",
             });
             return;
         }
-        // user is part of this grade here 
+        // user is part of this grade here
         if (user.role === "TEACHER") {
             // teacher teaches this grade that the questions are in then its cool
-            const teachesGrade = yield __1.prisma.teacherGrade.findFirst({ where: { teacherId: user.id, gradeId: gradeId } });
+            const teachesGrade = yield __1.prisma.teacherGrade.findFirst({
+                where: { teacherId: user.id, gradeId: gradeId },
+            });
             if (!teachesGrade) {
                 res.status(401).json({
-                    "success": false,
-                    "message": "teacher cannot view questions of this grade"
+                    success: false,
+                    message: "teacher cannot view questions of this grade",
                 });
                 return;
             }
         }
-        const questions = yield __1.prisma.question.findMany({ where: { levelId: level.id, ready: true } });
+        const questions = yield __1.prisma.question.findMany({
+            where: { levelId: level.id, ready: true },
+        });
         res.status(200).json({
-            "success": true,
+            success: true,
             questions,
         });
     }
     catch (error) {
         console.log(error);
         res.status(500).json({
-            "success": false,
-            "message": "internal server error when getting questions for a level"
+            success: false,
+            message: "internal server error when getting questions for a level",
         });
     }
 });
 exports.getQuestionsByLevelHandler = getQuestionsByLevelHandler;
 const isMCQQuestion = (data) => {
-    return data.questionType === 'MCQ';
+    return data.questionType === "MCQ";
 };
 const isFillBlankQuestion = (data) => {
-    return data.questionType === 'FILL_IN_BLANK';
+    return data.questionType === "FILL_IN_BLANK";
 };
 const isMatchingQuestion = (data) => {
-    return data.questionType === 'MATCHING';
+    return data.questionType === "MATCHING";
 };
 const addQuestionByLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -91,18 +98,18 @@ const addQuestionByLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0
         if (!user || user.role === "STUDENT") {
             res.status(401).json({
                 success: false,
-                message: "Only teachers can add questions"
+                message: "Only teachers can add questions",
             });
             return;
         }
         const level = yield __1.prisma.level.findUnique({
             where: { id: requestData.levelId },
-            include: { subject: true }
+            include: { subject: true },
         });
         if (!level) {
             res.status(401).json({
                 success: false,
-                message: "Invalid level id"
+                message: "Invalid level id",
             });
             return;
         }
@@ -111,13 +118,13 @@ const addQuestionByLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0
             const teacherGrade = yield __1.prisma.teacherGrade.findFirst({
                 where: {
                     teacherId: userId,
-                    gradeId: level.subject.gradeId
-                }
+                    gradeId: level.subject.gradeId,
+                },
             });
             if (!teacherGrade) {
                 res.status(401).json({
                     success: false,
-                    message: "Teacher cannot add questions to this grade's level"
+                    message: "Teacher cannot add questions to this grade's level",
                 });
                 return;
             }
@@ -130,26 +137,26 @@ const addQuestionByLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0
             if (!requestData.segments || requestData.segments.length === 0) {
                 res.status(400).json({
                     success: false,
-                    message: "Fill in the blank questions must have at least one segment"
+                    message: "Fill in the blank questions must have at least one segment",
                 });
                 return;
             }
             if (!requestData.answers || requestData.answers.length === 0) {
                 res.status(400).json({
                     success: false,
-                    message: "Fill in the blank questions must have at least one answer"
+                    message: "Fill in the blank questions must have at least one answer",
                 });
                 return;
             }
             // Validate that answers correspond to blank segments
             const blankIndices = requestData.segments
-                .map((segment, index) => segment.isBlank ? index : -1)
-                .filter(index => index !== -1);
-            const invalidAnswers = requestData.answers.some(answer => !blankIndices.includes(answer.blankIndex));
+                .map((segment, index) => (segment.isBlank ? index : -1))
+                .filter((index) => index !== -1);
+            const invalidAnswers = requestData.answers.some((answer) => !blankIndices.includes(answer.blankIndex));
             if (invalidAnswers) {
                 res.status(400).json({
                     success: false,
-                    message: "Answer indices must correspond to blank segments"
+                    message: "Answer indices must correspond to blank segments",
                 });
                 return;
             }
@@ -164,20 +171,20 @@ const addQuestionByLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0
                         difficulty: requestData.difficulty,
                         levelId: requestData.levelId,
                         explanation: requestData.explanation,
-                        questionType: 'MCQ',
+                        questionType: "MCQ",
                         ready: false, // Use the validated ready value
-                    }
+                    },
                 });
             }
             else if (isFillBlankQuestion(requestData)) {
-                console.log('FILL IN THE BLANK QUESTION CREATED');
+                console.log("FILL IN THE BLANK QUESTION CREATED");
                 question = yield __1.prisma.question.create({
                     data: {
                         questionTitle: requestData.questionTitle,
                         difficulty: requestData.difficulty,
                         levelId: requestData.levelId,
                         explanation: requestData.explanation,
-                        questionType: 'FILL_IN_BLANK',
+                        questionType: "FILL_IN_BLANK",
                         ready: isReady, // Use the validated ready value
                         BlankSegments: {
                             createMany: {
@@ -185,20 +192,20 @@ const addQuestionByLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0
                                     text: segment.text,
                                     isBlank: segment.isBlank,
                                     blankHint: segment.blankHint || null,
-                                    order: index
-                                }))
-                            }
+                                    order: index,
+                                })),
+                            },
                         },
                         BlankAnswers: {
                             createMany: {
-                                data: requestData.answers.map(answer => ({
+                                data: requestData.answers.map((answer) => ({
                                     value: answer.value,
                                     blankIndex: answer.blankIndex,
-                                    isCorrect: true
-                                }))
-                            }
-                        }
-                    }
+                                    isCorrect: true,
+                                })),
+                            },
+                        },
+                    },
                 });
             }
             else if (isMatchingQuestion(requestData)) {
@@ -208,40 +215,40 @@ const addQuestionByLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0
                         difficulty: requestData.difficulty,
                         levelId: requestData.levelId,
                         explanation: requestData.explanation,
-                        questionType: 'MATCHING',
+                        questionType: "MATCHING",
                         ready: isReady, // Use the validated ready value
                         MatchingPairs: {
                             createMany: {
                                 data: requestData.pairs.map((pair, index) => ({
                                     leftItem: pair.leftItem,
                                     rightItem: pair.rightItem,
-                                    order: index
-                                }))
-                            }
-                        }
-                    }
+                                    order: index,
+                                })),
+                            },
+                        },
+                    },
                 });
             }
             res.status(201).json({
                 success: true,
-                data: question
+                data: question,
             });
         }
         catch (error) {
-            console.error('Error creating question:', error);
+            console.error("Error creating question:", error);
             res.status(500).json({
                 success: false,
                 message: "Failed to create question",
-                error: error instanceof Error ? error.message : "Unknown error"
+                error: error instanceof Error ? error.message : "Unknown error",
             });
         }
     }
     catch (error) {
-        console.error('Handler error:', error);
+        console.error("Handler error:", error);
         res.status(500).json({
             success: false,
             message: "Internal server error when adding question",
-            error: error instanceof Error ? error.message : "Unknown error"
+            error: error instanceof Error ? error.message : "Unknown error",
         });
     }
 });
@@ -254,9 +261,9 @@ const validateReadyField = (requestData) => {
             return false;
         const blankIndices = requestData.segments
             .map((segment, index) => (segment.isBlank ? index : -1))
-            .filter(index => index !== -1);
+            .filter((index) => index !== -1);
         const validAnswers = requestData.answers && requestData.answers.length > 0;
-        const allAnswersMatchBlanks = (_a = requestData.answers) === null || _a === void 0 ? void 0 : _a.every(answer => blankIndices.includes(answer.blankIndex));
+        const allAnswersMatchBlanks = (_a = requestData.answers) === null || _a === void 0 ? void 0 : _a.every((answer) => blankIndices.includes(answer.blankIndex));
         return validAnswers && allAnswersMatchBlanks;
     }
     else if (isMatchingQuestion(requestData)) {
@@ -273,46 +280,51 @@ const deleteQuestionHandler = (req, res) => __awaiter(void 0, void 0, void 0, fu
         const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
         if (!user || user.role === "STUDENT") {
             res.status(401).json({
-                "success": false,
-                "message": "student cannot delete questions"
+                success: false,
+                message: "student cannot delete questions",
             });
             return;
         }
-        const question = yield __1.prisma.question.findUnique({ where: { id: questionId }, include: {
+        const question = yield __1.prisma.question.findUnique({
+            where: { id: questionId },
+            include: {
                 level: {
                     select: {
                         subject: true,
-                    }
-                }
-            } });
+                    },
+                },
+            },
+        });
         if (!question) {
             res.status(400).json({
-                "success": false,
-                "message": "question not found"
+                success: false,
+                message: "question not found",
             });
             return;
         }
         if (user.role === "TEACHER") {
-            const teachesGrade = yield __1.prisma.teacherGrade.findFirst({ where: { teacherId: user.id, gradeId: question === null || question === void 0 ? void 0 : question.level.subject.gradeId } });
+            const teachesGrade = yield __1.prisma.teacherGrade.findFirst({
+                where: { teacherId: user.id, gradeId: question === null || question === void 0 ? void 0 : question.level.subject.gradeId },
+            });
             if (!teachesGrade) {
                 res.status(401).json({
-                    "success": false,
-                    "message": "teacher cannot delete question in this grade"
+                    success: false,
+                    message: "teacher cannot delete question in this grade",
                 });
                 return;
             }
         }
         yield __1.prisma.question.delete({ where: { id: question === null || question === void 0 ? void 0 : question.id } });
         res.status(200).json({
-            "success": true,
-            "message": `question deleted successfully`
+            success: true,
+            message: `question deleted successfully`,
         });
     }
     catch (error) {
         console.log(error);
         res.status(500).json({
-            "success": false,
-            "message": "internal server error when deleting question"
+            success: false,
+            message: "internal server error when deleting question",
         });
     }
 });
@@ -325,7 +337,7 @@ const getQuestionWithAnswers = (req, res) => __awaiter(void 0, void 0, void 0, f
         if (!user) {
             res.status(400).json({
                 success: false,
-                message: "invalid user id"
+                message: "invalid user id",
             });
             return;
         }
@@ -336,26 +348,26 @@ const getQuestionWithAnswers = (req, res) => __awaiter(void 0, void 0, void 0, f
                 level: {
                     select: {
                         subject: true,
-                    }
+                    },
                 },
                 MCQAnswers: true,
                 BlankSegments: {
                     orderBy: {
-                        order: 'asc'
-                    }
+                        order: "asc",
+                    },
                 },
                 BlankAnswers: true,
                 MatchingPairs: {
                     orderBy: {
-                        order: 'asc'
-                    }
-                }
-            }
+                        order: "asc",
+                    },
+                },
+            },
         });
         if (!question) {
             res.status(400).json({
                 success: false,
-                message: "question not found"
+                message: "question not found",
             });
             return;
         }
@@ -364,18 +376,18 @@ const getQuestionWithAnswers = (req, res) => __awaiter(void 0, void 0, void 0, f
         if (user.role === "STUDENT" && user.gradeId !== gradeId) {
             res.status(401).json({
                 success: false,
-                message: "student cannot read questions for this grade"
+                message: "student cannot read questions for this grade",
             });
             return;
         }
         if (user.role === "TEACHER") {
             const teachesGrade = yield __1.prisma.teacherGrade.findFirst({
-                where: { teacherId: user.id, gradeId: gradeId }
+                where: { teacherId: user.id, gradeId: gradeId },
             });
             if (!teachesGrade) {
                 res.status(401).json({
                     success: false,
-                    message: "teacher cannot read questions for this grade"
+                    message: "teacher cannot read questions for this grade",
                 });
                 return;
             }
@@ -395,20 +407,20 @@ const getQuestionWithAnswers = (req, res) => __awaiter(void 0, void 0, void 0, f
             default:
                 res.status(400).json({
                     success: false,
-                    message: "invalid question type"
+                    message: "invalid question type",
                 });
                 return;
         }
         res.status(200).json({
             success: true,
-            question: processedQuestion
+            question: processedQuestion,
         });
     }
     catch (error) {
         console.error(error);
         res.status(500).json({
             success: false,
-            message: "internal server error when getting question with its answers"
+            message: "internal server error when getting question with its answers",
         });
     }
 });
@@ -429,7 +441,7 @@ const processMCQQuestion = (question, isStudent) => {
         answers = answers.map((answer) => ({
             id: answer.id,
             value: answer.value,
-            questionId: answer.questionId
+            questionId: answer.questionId,
         }));
     }
     return Object.assign(Object.assign({}, question), { MCQAnswers: shuffleArray(answers), BlankSegments: undefined, BlankAnswers: undefined, MatchingPairs: undefined });
@@ -447,7 +459,7 @@ const processMatchingQuestion = (question, isStudent) => {
             id: pair.id,
             leftItem: pair.leftItem,
             rightItem: rightItems[index],
-            order: pair.order
+            order: pair.order,
         }));
     }
     return Object.assign(Object.assign({}, question), { MCQAnswers: undefined, BlankSegments: undefined, BlankAnswers: undefined, MatchingPairs: pairs });
@@ -460,39 +472,41 @@ const getAnsweredQuestionsByLevelHandler = (req, res) => __awaiter(void 0, void 
         const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
         if (!user) {
             res.status(400).json({
-                "success": false,
-                "message": "invalid user id"
+                success: false,
+                message: "invalid user id",
             });
             return;
         }
         const level = yield __1.prisma.level.findUnique({ where: { id: levelId } });
         if (!level) {
             res.status(400).json({
-                "success": false,
-                "message": "level not found"
+                success: false,
+                message: "level not found",
             });
             return;
         }
         // get questions which have responses by the user and in the level with id = level.id
-        const answeredQuestions = yield __1.prisma.question.findMany({ where: {
+        const answeredQuestions = yield __1.prisma.question.findMany({
+            where: {
                 levelId: level.id,
                 ready: true,
                 QuestionResponse: {
                     some: {
                         responderId: user.id,
-                    }
-                }
-            } });
+                    },
+                },
+            },
+        });
         res.status(200).json({
-            "success": true,
-            "answeredQuestions": answeredQuestions,
+            success: true,
+            answeredQuestions: answeredQuestions,
         });
     }
     catch (error) {
         console.log(error);
         res.status(500).json({
-            "success": false,
-            "message": "internal server error when getting answered questions"
+            success: false,
+            message: "internal server error when getting answered questions",
         });
     }
 });
