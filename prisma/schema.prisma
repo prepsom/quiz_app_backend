@@ -74,14 +74,14 @@ model Level {
 }
 
 model Question {
-  id               String             @id @default(uuid())
-  questionType     QuestionType       @default(MCQ)
-  questionTitle    String
-  questionHint     String?
-  difficulty       Difficulty         @default(EASY)
-  level            Level              @relation(fields: [levelId], references: [id], onDelete: Cascade)
-  levelId          String
-  explanation      String             @default("")
+  id            String       @id @default(uuid())
+  questionType  QuestionType @default(MCQ)
+  questionTitle String
+  questionHint  String?
+  difficulty    Difficulty   @default(EASY)
+  level         Level        @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  levelId       String
+  explanation   String       @default("")
 
   MCQAnswers       Answer[]
   // New relations for other question types
