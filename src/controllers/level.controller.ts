@@ -515,6 +515,9 @@ interface QuestionAnalysis {
 const completeLevelHandler = async (req: Request, res: Response) => {
   try {
     const { levelId } = req.params as { levelId: string };
+    const { answeredQuestionsInLevel } = req.body as {
+      answeredQuestionsInLevel: string[];
+    }; // answered questions in level id's
     const userId = req.userId;
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -553,8 +556,8 @@ const completeLevelHandler = async (req: Request, res: Response) => {
       return;
     }
 
-    const totalQuestionsInLevel = level.Questions.length;
-    if (totalQuestionsInLevel === 0) {
+    const totalAnsweredQuestionsInLevel = answeredQuestionsInLevel.length;
+    if (totalAnsweredQuestionsInLevel === 0 || level.Questions.length === 0) {
       res.status(400).json({
         success: false,
         message: "no questions in level, user cannot complete level",
@@ -562,59 +565,48 @@ const completeLevelHandler = async (req: Request, res: Response) => {
       return;
     }
 
-    // Analyze each question's response
-    const questionAnalysis = level.Questions.map((question) => {
-      const response = question.QuestionResponse[0];
-      let wasCorrect = false;
-
-      if (response) {
-        switch (question.questionType) {
-          case "MCQ":
-            wasCorrect = response.isCorrect;
-            break;
-          case "FILL_IN_BLANK":
-            // For fill-in-blank, check if all blanks were answered correctly
-            const blankResponses = response.responseData as {
-              [key: number]: string;
-            };
-            const totalBlanks = question.BlankSegments.filter(
-              (seg) => seg.isBlank
-            ).length;
-            const correctBlanks = Object.entries(blankResponses).filter(
-              ([index, value]) => {
-                const correctAnswers = question.BlankAnswers.filter(
-                  (ans) => ans.blankIndex === parseInt(index) && ans.isCorrect
-                );
-                return correctAnswers.some(
-                  (ans) => ans.value.toLowerCase() === value.toLowerCase()
-                );
-              }
-            ).length;
-            wasCorrect = correctBlanks === totalBlanks;
-            break;
-          case "MATCHING":
-            // For matching, check if all pairs were matched correctly
-            const matchingResponses = response.responseData as {
-              [key: string]: string;
-            };
-            const correctMatches = Object.entries(matchingResponses).filter(
-              ([left, right]) => {
-                return question.MatchingPairs.some(
-                  (pair) => pair.leftItem === left && pair.rightItem === right
-                );
-              }
-            ).length;
-            wasCorrect = correctMatches === question.MatchingPairs.length;
-            break;
+    // every answered question id should exist in the level.
+    const answeredQuestions = await Promise.all(
+      answeredQuestionsInLevel.map(async (answeredQuestionId: string) => {
+        const questionInLevel = await prisma.question.findUnique({
+          where: { id: answeredQuestionId },
+        });
+        if (!questionInLevel) {
+          throw new Error("Invalid answered question id");
         }
-      }
 
-      return {
-        question,
-        questionResponseByUser: response,
-        wasCorrect,
-      } as QuestionAnalysis;
-    });
+        if (questionInLevel.levelId !== level.id)
+          throw new Error("answered question not in level");
+
+        return questionInLevel;
+      })
+    );
+
+    // go through each answered question and filter from the totalquestion arr the question with id = currentAnswerId
+    const answeredQuestionsWithResponse = answeredQuestions.map(
+      (answeredQuestion) => {
+        const answeredQuestionWithResponse = level.Questions.find(
+          (question) => question.id === answeredQuestion.id
+        );
+        return answeredQuestionWithResponse;
+      }
+    );
+
+    // Analyze each question's response
+    // Analyze answered questions response
+    const questionAnalysis = answeredQuestionsWithResponse.map(
+      (answeredQuestionWithResponse) => {
+        return {
+          question: answeredQuestionWithResponse,
+          questionResponseByUser:
+            answeredQuestionWithResponse?.QuestionResponse !== undefined
+              ? answeredQuestionWithResponse.QuestionResponse[0]
+              : null,
+          wasCorrect:
+            answeredQuestionWithResponse?.QuestionResponse[0].isCorrect,
+        };
+      }
+    );
 
     const noOfCorrectQuestions = questionAnalysis.filter(
       (qa) => qa.wasCorrect
@@ -625,26 +617,20 @@ const completeLevelHandler = async (req: Request, res: Response) => {
     );
 
     const percentage = Math.fround(
-      (noOfCorrectQuestions / totalQuestionsInLevel) * 100
+      (noOfCorrectQuestions / totalAnsweredQuestionsInLevel) * 100
     );
-    const isComplete = noOfCorrectQuestions >= level.passingQuestions;
 
-    if (!isComplete) {
-      res.status(400).json({
-        success: false,
-        message: "user cannot complete this level. Get better",
-      });
-      return;
-    }
+    console.log("No Of Correct questions :- ", noOfCorrectQuestions);
+
+    const isComplete = noOfCorrectQuestions >= level.passingQuestions;
 
     // Prepare data for OpenAI
     const openAiMessages = questionAnalysis.map((qa) => ({
       ...qa.question,
       questionResponseByUser: qa.questionResponseByUser,
       wasCorrect: qa.wasCorrect,
-      questionType: qa.question.questionType,
+      questionType: qa.question?.questionType,
     }));
-
     const openAIResponse = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
@@ -675,6 +661,22 @@ const completeLevelHandler = async (req: Request, res: Response) => {
       weaknesses: string[];
       recommendations: string[];
     };
+
+    if (!isComplete) {
+      res.status(200).json({
+        success: true,
+        message: "user cannot complete this level. Get better",
+        noOfCorrectQuestions,
+        totalQuestions: totalAnsweredQuestionsInLevel,
+        percentage,
+        isComplete,
+        strengths: apiData.strengths,
+        weaknesses: apiData.weaknesses,
+        recommendations: apiData.recommendations,
+        remarks: apiData.remarks,
+      });
+      return;
+    }
 
     // Handle level completion update
     const completedLevel = await prisma.userLevelComplete.findFirst({
@@ -721,7 +723,7 @@ const completeLevelHandler = async (req: Request, res: Response) => {
       success: true,
       message: "Level completed",
       noOfCorrectQuestions,
-      totalQuestions: totalQuestionsInLevel,
+      totalQuestions: totalAnsweredQuestionsInLevel,
       percentage,
       isComplete,
       strengths: apiData.strengths,
