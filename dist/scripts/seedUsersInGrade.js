@@ -1,7 +1,4 @@
 "use strict";
-// when the server initially starts up for the first time , we
-// need to create a default school if not already created.
-// once created , we need to add grades from 1 - 12 in the said school.
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -15,77 +12,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.seedUsersInGrade = exports.createSchoolAndAddGrades = exports.dbInit = void 0;
+exports.seedUsersInGrade = void 0;
 const __1 = require("..");
-const constants_1 = require("../constants");
 const bcrypt_1 = __importDefault(require("bcrypt"));
-// dbInit function adds default school if it doesn't exist and then adds grades to it.
-const dbInit = () => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        // check if default school exists
-        const existingSchool = yield __1.prisma.school.findFirst({
-            where: { schoolName: "PrepSOM School" },
-        });
-        if (existingSchool !== null) {
-            return;
-        }
-        const school = yield __1.prisma.school.create({ data: {} });
-        // once school is created , add grades (1 - 12) to said school
-        for (const grade of constants_1.GRADES) {
-            try {
-                yield __1.prisma.grade.create({
-                    data: {
-                        grade: grade.grade,
-                        schoolId: school.id,
-                    },
-                });
-            }
-            catch (error) {
-                console.log(`FAILED TO ADD grade ${grade.grade} in school ${school.schoolName}`);
-                throw new Error("database initialization failed");
-            }
-        }
-        // grades added in the default school
-        console.log("DEFAULT SCHOOL AND GRADES INITIALIZED SUCCESSFULLY");
-    }
-    catch (error) {
-        console.log(error);
-    }
-});
-exports.dbInit = dbInit;
-// create a script to add a school to the schools database and after
-// adding it create grades in the newly created school.
-const createSchoolAndAddGrades = (schoolName) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        const existingSchool = yield __1.prisma.school.findFirst({
-            where: { schoolName: schoolName.trim() },
-        });
-        if (existingSchool) {
-            console.log(`SCHOOL with name ${schoolName.trim()} already exists`);
-            return;
-        }
-        const school = yield __1.prisma.school.create({
-            data: { schoolName: schoolName.trim() },
-        });
-        for (const grade of constants_1.GRADES) {
-            try {
-                const gradeNumber = grade.grade;
-                yield __1.prisma.grade.create({
-                    data: { grade: gradeNumber, schoolId: school.id },
-                });
-            }
-            catch (error) {
-                console.log(error);
-                throw new Error(`FAILED TO ADD grade ${grade.grade} to ${school.schoolName}`);
-            }
-        }
-        console.log(`CREATED SCHOOL ${school.schoolName} and added grades 1 to 12 to it`);
-    }
-    catch (error) {
-        console.log(error);
-    }
-});
-exports.createSchoolAndAddGrades = createSchoolAndAddGrades;
+const csvParsing_1 = require("../utils/csvParsing");
+const generatePassword_1 = require("../utils/generatePassword");
+const emailValidation_1 = require("../utils/emailValidation");
 const seedUserInGrades = (gradeIdArr, email, name, password, role, avatar) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const salt = yield bcrypt_1.default.genSalt(10);
@@ -148,8 +80,24 @@ const seedUserInGrades = (gradeIdArr, email, name, password, role, avatar) => __
         console.log("FAILED TO SEED USER IN THE DATABASE:- ", error);
     }
 });
-// seed users in a school in a particular grade ()
-const seedUsersInGrade = (gradeNumber, schoolName) => __awaiter(void 0, void 0, void 0, function* () {
+const readStudentsCsvData = (csvPath) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const data = yield (0, csvParsing_1.readCSVFile)(csvPath);
+        const studentsData = data.map((data) => {
+            return {
+                email: data["Email ID (for Login)"],
+                name: data["Full Name"],
+                role: "STUDENT",
+                avatar: data.Gender === "Male" ? "MALE" : "FEMALE",
+            };
+        });
+        return studentsData;
+    }
+    catch (error) {
+        console.log(error);
+    }
+});
+const seedUsersInGrade = (gradeNumber, schoolName, csvPath) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         // seeding users in a particular school's grade
         // get school with the particular school name (it should be exact)
@@ -169,66 +117,57 @@ const seedUsersInGrade = (gradeNumber, schoolName) => __awaiter(void 0, void 0, 
             console.log(`GRADE ${gradeNumber} in ${school.schoolName} not found`);
             return;
         }
+        const studentsCsvData = yield readStudentsCsvData(csvPath);
+        if (studentsCsvData === undefined)
+            throw new Error("Cannot read CSV file in seeding users");
         // add list of users
-        const usersList = [
-            {
-                email: "alice.student@school.com",
-                name: "Alice Johnson",
-                password: "student123",
-                role: "STUDENT",
-                avatar: "FEMALE",
+        const usersList = studentsCsvData.map((studentData) => {
+            return {
+                email: studentData.email,
+                avatar: studentData.avatar,
+                name: studentData.name,
+                role: studentData.role,
                 gradeId: grade.id,
-            },
+                password: (0, generatePassword_1.generatePassword)(),
+            };
+        });
+        const testUsers = [
             {
-                email: "bob.student@school.com",
-                name: "Bob Johnson",
-                password: "student456",
-                role: "STUDENT",
+                email: "admin123@gmail.com",
                 avatar: "MALE",
+                role: "STUDENT",
+                name: "Dhruv Shetty",
+                password: "1234@#A",
                 gradeId: grade.id,
             },
             {
-                email: "sarah.smith@school.com",
-                name: "Sarah Smith",
-                password: "secure789",
-                role: "STUDENT",
-                avatar: "FEMALE",
-                gradeId: grade.id,
-            },
-            {
-                email: "michael.chen@school.com",
-                name: "Michael Chen",
-                password: "secure101",
-                role: "STUDENT",
+                email: "aman123@gmail.com",
                 avatar: "MALE",
-                gradeId: grade.id,
-            },
-            {
-                email: "emma.davis@school.com",
-                name: "Emma Davis",
-                password: "secure202",
-                role: "TEACHER",
-                avatar: "FEMALE",
-                gradeId: grade.id,
-            },
-            {
-                email: "james.wilson@school.com",
-                name: "James Wilson",
-                password: "secure303",
                 role: "STUDENT",
-                avatar: "MALE",
+                name: "Aman Loharuka",
+                password: "1234@#A",
                 gradeId: grade.id,
-            },
-            {
-                email: "diana.brown@school.com",
-                name: "Diana Brown",
-                password: "secure404",
-                role: "ADMIN",
-                avatar: "FEMALE",
             },
         ];
+        for (const testUser of testUsers) {
+            usersList.push(testUser);
+        }
         for (const user of usersList) {
             try {
+                // check if user with the current user's email already exists in db.
+                // if yes then continue to next user.
+                // validate email before inserting it in db or checking
+                if (!(0, emailValidation_1.validateEmail)(user.email)) {
+                    console.log(`INVALID EMAIL , skipping record with invalid email ${user.email}`);
+                    continue;
+                }
+                const existingUser = yield __1.prisma.user.findUnique({
+                    where: { email: user.email.trim().toLowerCase() },
+                });
+                if (existingUser !== null) {
+                    console.log(`SKIPPING user with email id ${user.email} as it already exists`);
+                    continue;
+                }
                 yield seedUserInGrades(user.gradeId !== undefined ? [user.gradeId] : [], user.email, user.name, user.password, user.role, user.avatar);
             }
             catch (error) {
@@ -243,3 +182,7 @@ const seedUsersInGrade = (gradeNumber, schoolName) => __awaiter(void 0, void 0, 
     }
 });
 exports.seedUsersInGrade = seedUsersInGrade;
+// npm create-users-in-grade 8 schoolName csvPathForStudents
+(0, exports.seedUsersInGrade)(parseInt(process.argv[2]), process.argv[3], process.argv[4])
+    .then(() => console.log("Sucessfully inserted users in grade of a school"))
+    .catch((e) => process.exit(1));

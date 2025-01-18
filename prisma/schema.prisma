@@ -15,12 +15,20 @@ model Settings {
   value String
 }
 
+model School {
+  id         String  @id @default(uuid())
+  schoolName String  @default("PrepSOM School")
+  Grade      Grade[]
+}
+
 model Grade {
   id           String         @id @default(uuid())
   grade        Int
   students     User[]         @relation("StudentGrade")
   TeacherGrade TeacherGrade[]
   Subjects     Subject[]
+  school       School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolId     String
 }
 
 model User {
@@ -153,9 +161,9 @@ model QuestionResponse {
 
 model UserLevelComplete {
   id                   String   @id @default(uuid())
-  user                 User     @relation(fields: [userId], references: [id])
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId               String
-  level                Level    @relation(fields: [levelId], references: [id])
+  level                Level    @relation(fields: [levelId], references: [id], onDelete: Cascade)
   levelId              String
   totalPoints          Int
   noOfCorrectQuestions Int

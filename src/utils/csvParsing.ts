@@ -1,28 +1,53 @@
-import {parse} from "csv-parse"
-import fs from "fs"
+import { parse } from "csv-parse";
+import fs from "fs";
+import path from "path";
 
+interface CSVRow {
+  // Add your expected column types here
+  Timestamp: string;
+  "Full Name": string;
+  "Email ID (for Login)": string;
+  "Contact Number (for login)": number;
+  Gender: "Male" | "Female";
+  "School Name": string;
+}
 
-const readCsvStream = (filePath: string) => {
-    const results: any = [];
+const readCSVFile = async (filePath: string): Promise<CSVRow[]> => {
+  return new Promise((resolve, reject) => {
+    const results: CSVRow[] = [];
 
-    return new Promise((resolve, reject) => {
-        fs.createReadStream(filePath)
-            .pipe(parse({
-                columns: true,
-                skip_empty_lines: true,
-            }))
-            .on('data', (data) => {
-                // Only push rows where at least one field has content
-                if (Object.values(data).some((value) => typeof value === 'string' && value.trim() !=="")) {
-                    results.push(data);
-                }
-            })
-            .on('end', () => resolve(results))
-            .on('error', reject);
+    // Create a readable stream from the CSV file
+    const fileStream = fs.createReadStream(path.resolve(filePath));
+
+    // Configure the parser
+    const parser = parse({
+      columns: true, // Use the first line as headers
+      skip_empty_lines: true,
+      trim: true,
+      cast: true, // Automatically convert strings to their proper types
     });
-}
 
+    // Handle parsing events
+    parser.on("readable", function () {
+      let record;
+      while ((record = parser.read()) !== null) {
+        results.push(record);
+      }
+    });
 
-export {
-    readCsvStream,
-}
+    // Handle parsing completion
+    parser.on("end", function () {
+      resolve(results);
+    });
+
+    // Handle errors
+    parser.on("error", function (err) {
+      reject(err);
+    });
+
+    // Start the parsing process
+    fileStream.pipe(parser);
+  });
+};
+
+export { readCSVFile, CSVRow };

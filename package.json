@@ -4,7 +4,13 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "initialize-db": "node ./dist/scripts/dbInit.js",
+    "create-school-add-grades": "node ./dist/scripts/createSchoolAndAddGrades.js",
+    "create-users-in-grade": "node ./dist/scripts/seedUsersInGrade.js",
+    "create-subjects-in-grade": "node ./dist/scripts/createSubjectsInGrade.js",
+    "create-levels-in-subject": "node ./dist/scripts/createLevelsInSubject.js",
+    "create-questions-in-level": "node ./dist/scripts/createQuestionsInLevel.js"
   },
   "keywords": [],
   "author": "",
