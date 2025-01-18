@@ -25,6 +25,7 @@ const question_routes_1 = __importDefault(require("./routes/question.routes"));
 const answer_route_1 = __importDefault(require("./routes/answer.route"));
 const questionResponse_route_1 = __importDefault(require("./routes/questionResponse.route"));
 const user_route_1 = __importDefault(require("./routes/user.route"));
+const school_route_1 = __importDefault(require("./routes/school.route"));
 const openai_1 = __importDefault(require("openai"));
 const app = (0, express_1.default)();
 const port = process.env.PORT;
@@ -53,6 +54,7 @@ app.use("/question", question_routes_1.default);
 app.use("/answer", answer_route_1.default);
 app.use("/question-response", questionResponse_route_1.default);
 app.use("/user", user_route_1.default);
+app.use("/school", school_route_1.default);
 app.listen(port, () => {
     console.log(`server is running on post ${port}`);
 });

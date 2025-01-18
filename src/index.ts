@@ -10,6 +10,7 @@ import questionRoutes from "./routes/question.routes";
 import answerRoutes from "./routes/answer.route";
 import questionResponseRoutes from "./routes/questionResponse.route";
 import userRoutes from "./routes/user.route";
+import schoolRoutes from "./routes/school.route";
 import OpenAI from "openai";
 
 const app = express();
@@ -44,6 +45,7 @@ app.use("/question", questionRoutes);
 app.use("/answer", answerRoutes);
 app.use("/question-response", questionResponseRoutes);
 app.use("/user", userRoutes);
+app.use("/school", schoolRoutes);
 
 app.listen(port, () => {
   console.log(`server is running on post ${port}`);
