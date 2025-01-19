@@ -20,7 +20,6 @@ const getSchoolNameByGradeHandler = (req, res) => __awaiter(void 0, void 0, void
             return;
         }
         const schoolId = grade.schoolId;
-        console.log(__1.prisma.school);
         const school = yield __1.prisma.school.findUnique({ where: { id: schoolId } });
         if (!school) {
             // invalid reference in db , schoolId references to school table primary key but not available
