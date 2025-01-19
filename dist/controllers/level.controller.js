@@ -539,7 +539,10 @@ const completeLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
                             "weaknesses": ["weakness1", "weakness2", ...],
                             "recommendations": ["recommendation1", "recommendation2", ...]
                         }
-                        Each array should typically contain 2-3 points. Write remarks according to the performance.`,
+                        Each array should typically contain 2-3 points. Write remarks according to the performance. User
+                        performance can be evaluated from the data you are receiving about questions and its respective responses and 
+                        whether the response was correct or not.
+                        `,
                 },
                 {
                     role: "user",
@@ -549,6 +552,7 @@ const completeLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
         });
         const feedback = openAIResponse.choices[0].message.content;
         const apiData = JSON.parse(feedback || "");
+        console.log(apiData);
         if (!isComplete) {
             res.status(200).json({
                 success: true,
@@ -588,8 +592,8 @@ const completeLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
                 data: {
                     userId: user.id,
                     levelId: level.id,
-                    totalPoints: totalPointsEarnedInLevel,
                     noOfCorrectQuestions: noOfCorrectQuestions,
+                    totalPoints: totalPointsEarnedInLevel,
                     strengths: apiData.strengths,
                     weaknesses: apiData.weaknesses,
                     recommendations: apiData.recommendations,

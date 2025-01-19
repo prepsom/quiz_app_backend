@@ -645,7 +645,10 @@ const completeLevelHandler = async (req: Request, res: Response) => {
                             "weaknesses": ["weakness1", "weakness2", ...],
                             "recommendations": ["recommendation1", "recommendation2", ...]
                         }
-                        Each array should typically contain 2-3 points. Write remarks according to the performance.`,
+                        Each array should typically contain 2-3 points. Write remarks according to the performance. User
+                        performance can be evaluated from the data you are receiving about questions and its respective responses and 
+                        whether the response was correct or not.
+                        `,
         },
         {
           role: "user",
@@ -661,6 +664,8 @@ const completeLevelHandler = async (req: Request, res: Response) => {
       weaknesses: string[];
       recommendations: string[];
     };
+
+    console.log(apiData);
 
     if (!isComplete) {
       res.status(200).json({
@@ -710,8 +715,8 @@ const completeLevelHandler = async (req: Request, res: Response) => {
         data: {
           userId: user.id,
           levelId: level.id,
-          totalPoints: totalPointsEarnedInLevel,
           noOfCorrectQuestions: noOfCorrectQuestions,
+          totalPoints: totalPointsEarnedInLevel,
           strengths: apiData.strengths,
           weaknesses: apiData.weaknesses,
           recommendations: apiData.recommendations,
