@@ -444,6 +444,7 @@ exports.getLevelById = getLevelById;
 const completeLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { levelId } = req.params;
+        const { answeredQuestionsInLevel } = req.body; // answered questions in level id's
         const userId = req.userId;
         const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
         if (!user) {
@@ -478,62 +479,52 @@ const completeLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
             });
             return;
         }
-        const totalQuestionsInLevel = level.Questions.length;
-        if (totalQuestionsInLevel === 0) {
+        const totalAnsweredQuestionsInLevel = answeredQuestionsInLevel.length;
+        if (totalAnsweredQuestionsInLevel === 0 || level.Questions.length === 0) {
             res.status(400).json({
                 success: false,
                 message: "no questions in level, user cannot complete level",
             });
             return;
         }
-        // Analyze each question's response
-        const questionAnalysis = level.Questions.map((question) => {
-            const response = question.QuestionResponse[0];
-            let wasCorrect = false;
-            if (response) {
-                switch (question.questionType) {
-                    case "MCQ":
-                        wasCorrect = response.isCorrect;
-                        break;
-                    case "FILL_IN_BLANK":
-                        // For fill-in-blank, check if all blanks were answered correctly
-                        const blankResponses = response.responseData;
-                        const totalBlanks = question.BlankSegments.filter((seg) => seg.isBlank).length;
-                        const correctBlanks = Object.entries(blankResponses).filter(([index, value]) => {
-                            const correctAnswers = question.BlankAnswers.filter((ans) => ans.blankIndex === parseInt(index) && ans.isCorrect);
-                            return correctAnswers.some((ans) => ans.value.toLowerCase() === value.toLowerCase());
-                        }).length;
-                        wasCorrect = correctBlanks === totalBlanks;
-                        break;
-                    case "MATCHING":
-                        // For matching, check if all pairs were matched correctly
-                        const matchingResponses = response.responseData;
-                        const correctMatches = Object.entries(matchingResponses).filter(([left, right]) => {
-                            return question.MatchingPairs.some((pair) => pair.leftItem === left && pair.rightItem === right);
-                        }).length;
-                        wasCorrect = correctMatches === question.MatchingPairs.length;
-                        break;
-                }
+        // every answered question id should exist in the level.
+        const answeredQuestions = yield Promise.all(answeredQuestionsInLevel.map((answeredQuestionId) => __awaiter(void 0, void 0, void 0, function* () {
+            const questionInLevel = yield __1.prisma.question.findUnique({
+                where: { id: answeredQuestionId },
+            });
+            if (!questionInLevel) {
+                throw new Error("Invalid answered question id");
             }
+            if (questionInLevel.levelId !== level.id)
+                throw new Error("answered question not in level");
+            return questionInLevel;
+        })));
+        // go through each answered question and filter from the totalquestion arr the question with id = currentAnswerId
+        const answeredQuestionsWithResponse = answeredQuestions.map((answeredQuestion) => {
+            const answeredQuestionWithResponse = level.Questions.find((question) => question.id === answeredQuestion.id);
+            return answeredQuestionWithResponse;
+        });
+        // Analyze each question's response
+        // Analyze answered questions response
+        const questionAnalysis = answeredQuestionsWithResponse.map((answeredQuestionWithResponse) => {
             return {
-                question,
-                questionResponseByUser: response,
-                wasCorrect,
+                question: answeredQuestionWithResponse,
+                questionResponseByUser: (answeredQuestionWithResponse === null || answeredQuestionWithResponse === void 0 ? void 0 : answeredQuestionWithResponse.QuestionResponse) !== undefined
+                    ? answeredQuestionWithResponse.QuestionResponse[0]
+                    : null,
+                wasCorrect: answeredQuestionWithResponse === null || answeredQuestionWithResponse === void 0 ? void 0 : answeredQuestionWithResponse.QuestionResponse[0].isCorrect,
             };
         });
         const noOfCorrectQuestions = questionAnalysis.filter((qa) => qa.wasCorrect).length;
         const totalPointsEarnedInLevel = questionAnalysis.reduce((total, qa) => { var _a; return total + (((_a = qa.questionResponseByUser) === null || _a === void 0 ? void 0 : _a.pointsEarned) || 0); }, 0);
-        const percentage = Math.fround((noOfCorrectQuestions / totalQuestionsInLevel) * 100);
+        const percentage = Math.fround((noOfCorrectQuestions / totalAnsweredQuestionsInLevel) * 100);
+        console.log("No Of Correct questions :- ", noOfCorrectQuestions);
         const isComplete = noOfCorrectQuestions >= level.passingQuestions;
-        if (!isComplete) {
-            res.status(400).json({
-                success: false,
-                message: "user cannot complete this level. Get better",
-            });
-            return;
-        }
         // Prepare data for OpenAI
-        const openAiMessages = questionAnalysis.map((qa) => (Object.assign(Object.assign({}, qa.question), { questionResponseByUser: qa.questionResponseByUser, wasCorrect: qa.wasCorrect, questionType: qa.question.questionType })));
+        const openAiMessages = questionAnalysis.map((qa) => {
+            var _a;
+            return (Object.assign(Object.assign({}, qa.question), { questionResponseByUser: qa.questionResponseByUser, wasCorrect: qa.wasCorrect, questionType: (_a = qa.question) === null || _a === void 0 ? void 0 : _a.questionType }));
+        });
         const openAIResponse = yield __1.openai.chat.completions.create({
             model: "gpt-3.5-turbo",
             messages: [
@@ -548,7 +539,10 @@ const completeLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
                             "weaknesses": ["weakness1", "weakness2", ...],
                             "recommendations": ["recommendation1", "recommendation2", ...]
                         }
-                        Each array should typically contain 2-3 points. Write remarks according to the performance.`,
+                        Each array should typically contain 2-3 points. Write remarks according to the performance. User
+                        performance can be evaluated from the data you are receiving about questions and its respective responses and 
+                        whether the response was correct or not.
+                        `,
                 },
                 {
                     role: "user",
@@ -558,6 +552,22 @@ const completeLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
         });
         const feedback = openAIResponse.choices[0].message.content;
         const apiData = JSON.parse(feedback || "");
+        console.log(apiData);
+        if (!isComplete) {
+            res.status(200).json({
+                success: true,
+                message: "user cannot complete this level. Get better",
+                noOfCorrectQuestions,
+                totalQuestions: totalAnsweredQuestionsInLevel,
+                percentage,
+                isComplete,
+                strengths: apiData.strengths,
+                weaknesses: apiData.weaknesses,
+                recommendations: apiData.recommendations,
+                remarks: apiData.remarks,
+            });
+            return;
+        }
         // Handle level completion update
         const completedLevel = yield __1.prisma.userLevelComplete.findFirst({
             where: { userId: user.id, levelId: level.id },
@@ -582,8 +592,8 @@ const completeLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
                 data: {
                     userId: user.id,
                     levelId: level.id,
-                    totalPoints: totalPointsEarnedInLevel,
                     noOfCorrectQuestions: noOfCorrectQuestions,
+                    totalPoints: totalPointsEarnedInLevel,
                     strengths: apiData.strengths,
                     weaknesses: apiData.weaknesses,
                     recommendations: apiData.recommendations,
@@ -594,7 +604,7 @@ const completeLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
             success: true,
             message: "Level completed",
             noOfCorrectQuestions,
-            totalQuestions: totalQuestionsInLevel,
+            totalQuestions: totalAnsweredQuestionsInLevel,
             percentage,
             isComplete,
             strengths: apiData.strengths,
