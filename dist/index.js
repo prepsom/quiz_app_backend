@@ -33,8 +33,8 @@ const app = (0, express_1.default)();
 const port = process.env.PORT;
 // Load SSL/TLS certificates
 const options = {
-    key: fs_1.default.readFileSync("./certs/privkey.pem"), // Replace with your key file path
-    cert: fs_1.default.readFileSync("./certs/fullchain.pem"), // Replace with your cert file path
+    key: fs_1.default.readFileSync("./certs/key.pem"), // Replace with your key file path
+    cert: fs_1.default.readFileSync("./certs/cert.pem"), // Replace with your cert file path
 };
 // instantiating a new prisma client
 exports.prisma = new client_1.PrismaClient();

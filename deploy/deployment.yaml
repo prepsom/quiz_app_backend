@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prepsom-games-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prepsom-games-backend
+  template:
+    metadata:
+      labels:
+        app: prepsom-games-backend
+    spec:
+      volumes:
+      - name: games-tls-certs
+        secret:
+          secretName: games-tls-certs
+      containers:
+      - name: prepsom-games-backend
+        image: gcr.io/prepsom/prepsom-games-backend:latest
+        volumeMounts:
+        - name: games-tls-certs
+          mountPath: "/apps/prepsom-games-backend/certs"
+          readOnly: true
+        ports:
+        - containerPort: 8000
+        # command: ["sleep", "infinity"]
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: secrets
+              key: DATABASE_URL
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: secrets
+              key: OPENAI_API_KEY
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: secrets
+              key: JWT_SECRET
+        - name: CLIENT_URL
+          value: games.prepsom.com
+        - name: PORT
+          value: "8000"

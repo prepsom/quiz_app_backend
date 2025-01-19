@@ -20,8 +20,8 @@ const port = process.env.PORT;
 
 // Load SSL/TLS certificates
 const options = {
-  key: fs.readFileSync("./certs/privkey.pem"), // Replace with your key file path
-  cert: fs.readFileSync("./certs/fullchain.pem"), // Replace with your cert file path
+  key: fs.readFileSync("./certs/key.pem"), // Replace with your key file path
+  cert: fs.readFileSync("./certs/cert.pem"), // Replace with your cert file path
 };
 
 // instantiating a new prisma client
