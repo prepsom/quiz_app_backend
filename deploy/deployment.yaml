@@ -43,6 +43,6 @@ spec:
               name: secrets
               key: JWT_SECRET
         - name: CLIENT_URL
-          value: games.prepsom.com
+          value: https://games.prepsom.com
         - name: PORT
           value: "8000"
