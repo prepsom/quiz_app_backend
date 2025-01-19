@@ -12,9 +12,18 @@ import questionResponseRoutes from "./routes/questionResponse.route";
 import userRoutes from "./routes/user.route";
 import schoolRoutes from "./routes/school.route";
 import OpenAI from "openai";
+import https from "https";
+import fs from "fs";
 
 const app = express();
 const port = process.env.PORT;
+
+// Load SSL/TLS certificates
+const options = {
+  key: fs.readFileSync("./certs/privkey.pem"), // Replace with your key file path
+  cert: fs.readFileSync("./certs/fullchain.pem"), // Replace with your cert file path
+};
+
 // instantiating a new prisma client
 export const prisma = new PrismaClient();
 export const openai = new OpenAI({
@@ -47,6 +56,7 @@ app.use("/question-response", questionResponseRoutes);
 app.use("/user", userRoutes);
 app.use("/school", schoolRoutes);
 
-app.listen(port, () => {
-  console.log(`server is running on post ${port}`);
+// Create HTTPS server
+https.createServer(options, app).listen(port, () => {
+  console.log(`Secure server is running on https://localhost:${port}`);
 });
