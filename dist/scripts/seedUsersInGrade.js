@@ -148,6 +148,14 @@ const seedUsersInGrade = (gradeNumber, schoolName, csvPath) => __awaiter(void 0,
                 password: "1234@#A",
                 gradeId: grade.id,
             },
+            {
+                email: "rkadmin@gmail.com",
+                avatar: "MALE",
+                role: "STUDENT",
+                name: "RK Admin",
+                password: "@rkadmin456#",
+                gradeId: grade.id,
+            },
         ];
         for (const testUser of testUsers) {
             usersList.push(testUser);
@@ -175,6 +183,8 @@ const seedUsersInGrade = (gradeNumber, schoolName, csvPath) => __awaiter(void 0,
                 throw new Error(`FAILED to seed user with email  ${user.email} in DB`);
             }
         }
+        // if here then all users in the usersList were seeded
+        // if all seeded successfully then send email to all of them with their login credentials.
         console.log(`SEEDED USERS IN GRADE ${gradeNumber} in school ${schoolName}`);
     }
     catch (error) {

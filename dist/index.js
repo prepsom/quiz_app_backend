@@ -29,13 +29,9 @@ const school_route_1 = __importDefault(require("./routes/school.route"));
 const openai_1 = __importDefault(require("openai"));
 const https_1 = __importDefault(require("https"));
 const fs_1 = __importDefault(require("fs"));
+const http_1 = __importDefault(require("http"));
 const app = (0, express_1.default)();
 const port = process.env.PORT;
-// Load SSL/TLS certificates
-const options = {
-    key: fs_1.default.readFileSync("./certs/key.pem"), // Replace with your key file path
-    cert: fs_1.default.readFileSync("./certs/cert.pem"), // Replace with your cert file path
-};
 // instantiating a new prisma client
 exports.prisma = new client_1.PrismaClient();
 exports.openai = new openai_1.default({
@@ -62,7 +58,28 @@ app.use("/answer", answer_route_1.default);
 app.use("/question-response", questionResponse_route_1.default);
 app.use("/user", user_route_1.default);
 app.use("/school", school_route_1.default);
-// Create HTTPS server
-https_1.default.createServer(options, app).listen(port, () => {
-    console.log(`Secure server is running on https://localhost:${port}`);
-});
+// Check if SSL certificates exist
+const sslEnabled = () => {
+    try {
+        return {
+            key: fs_1.default.readFileSync("./certs/key.pem"),
+            cert: fs_1.default.readFileSync("./certs/cert.pem"),
+        };
+    }
+    catch (error) {
+        return false;
+    }
+};
+const options = sslEnabled();
+if (options) {
+    // Create HTTPS server if SSL certificates exist
+    https_1.default.createServer(options, app).listen(port, () => {
+        console.log(`Secure server is running on https://localhost:${port}`);
+    });
+}
+else {
+    // Fallback to HTTP server if no SSL certificates
+    http_1.default.createServer(app).listen(port, () => {
+        console.log(`Server is running on http://localhost:${port}`);
+    });
+}

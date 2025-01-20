@@ -14,15 +14,10 @@ import schoolRoutes from "./routes/school.route";
 import OpenAI from "openai";
 import https from "https";
 import fs from "fs";
+import http from "http";
 
 const app = express();
 const port = process.env.PORT;
-
-// Load SSL/TLS certificates
-const options = {
-  key: fs.readFileSync("./certs/key.pem"), // Replace with your key file path
-  cert: fs.readFileSync("./certs/cert.pem"), // Replace with your cert file path
-};
 
 // instantiating a new prisma client
 export const prisma = new PrismaClient();
@@ -56,7 +51,28 @@ app.use("/question-response", questionResponseRoutes);
 app.use("/user", userRoutes);
 app.use("/school", schoolRoutes);
 
-// Create HTTPS server
-https.createServer(options, app).listen(port, () => {
-  console.log(`Secure server is running on https://localhost:${port}`);
-});
+// Check if SSL certificates exist
+const sslEnabled = () => {
+  try {
+    return {
+      key: fs.readFileSync("./certs/key.pem"),
+      cert: fs.readFileSync("./certs/cert.pem"),
+    };
+  } catch (error) {
+    return false;
+  }
+};
+
+const options = sslEnabled();
+
+if (options) {
+  // Create HTTPS server if SSL certificates exist
+  https.createServer(options, app).listen(port, () => {
+    console.log(`Secure server is running on https://localhost:${port}`);
+  });
+} else {
+  // Fallback to HTTP server if no SSL certificates
+  http.createServer(app).listen(port, () => {
+    console.log(`Server is running on http://localhost:${port}`);
+  });
+}

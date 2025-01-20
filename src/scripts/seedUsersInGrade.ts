@@ -178,6 +178,14 @@ export const seedUsersInGrade = async (
         password: "1234@#A",
         gradeId: grade.id,
       },
+      {
+        email: "rkadmin@gmail.com",
+        avatar: "MALE",
+        role: "STUDENT",
+        name: "RK Admin",
+        password: "@rkadmin456#",
+        gradeId: grade.id,
+      },
     ];
 
     for (const testUser of testUsers) {
@@ -204,6 +212,7 @@ export const seedUsersInGrade = async (
           console.log(
             `SKIPPING user with email id ${user.email} as it already exists`
           );
+
           continue;
         }
 
@@ -220,6 +229,10 @@ export const seedUsersInGrade = async (
         throw new Error(`FAILED to seed user with email  ${user.email} in DB`);
       }
     }
+
+    // if here then all users in the usersList were seeded
+    // if all seeded successfully then send email to all of them with their login credentials.
+
     console.log(`SEEDED USERS IN GRADE ${gradeNumber} in school ${schoolName}`);
   } catch (error) {
     console.log("FAILED TO SEED USERS IN DATABASE :- ", error);
