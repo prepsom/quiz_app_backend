@@ -18,6 +18,7 @@ const bcrypt_1 = __importDefault(require("bcrypt"));
 const csvParsing_1 = require("../utils/csvParsing");
 const generatePassword_1 = require("../utils/generatePassword");
 const emailValidation_1 = require("../utils/emailValidation");
+const sendEmail_1 = require("../utils/sendEmail");
 const seedUserInGrades = (gradeIdArr, email, name, password, role, avatar) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const salt = yield bcrypt_1.default.genSalt(10);
@@ -75,6 +76,10 @@ const seedUserInGrades = (gradeIdArr, email, name, password, role, avatar) => __
             });
             console.log(`${user.role} with ${user.email} added`);
         }
+        yield (0, sendEmail_1.sendEmaiL)(email, password);
+        console.log(`email sent to ${email
+            .trim()
+            .toLowerCase()} for their PrepSOM Login Credentials`);
     }
     catch (error) {
         console.log("FAILED TO SEED USER IN THE DATABASE:- ", error);
@@ -131,35 +136,34 @@ const seedUsersInGrade = (gradeNumber, schoolName, csvPath) => __awaiter(void 0,
                 password: (0, generatePassword_1.generatePassword)(),
             };
         });
-        const testUsers = [
-            {
-                email: "admin123@gmail.com",
-                avatar: "MALE",
-                role: "STUDENT",
-                name: "Dhruv Shetty",
-                password: "1234@#A",
-                gradeId: grade.id,
-            },
-            {
-                email: "aman123@gmail.com",
-                avatar: "MALE",
-                role: "STUDENT",
-                name: "Aman Loharuka",
-                password: "1234@#A",
-                gradeId: grade.id,
-            },
-            {
-                email: "rkadmin@gmail.com",
-                avatar: "MALE",
-                role: "STUDENT",
-                name: "RK Admin",
-                password: "@rkadmin456#",
-                gradeId: grade.id,
-            },
-        ];
-        for (const testUser of testUsers) {
-            usersList.push(testUser);
-        }
+        // const testUsers: {
+        //   email: string;
+        //   password: string;
+        //   name: string;
+        //   role: "STUDENT" | "TEACHER" | "ADMIN";
+        //   avatar: "MALE" | "FEMALE";
+        //   gradeId?: string;
+        // }[] = [
+        //   {
+        //     email: "admin123@gmail.com",
+        //     avatar: "MALE",
+        //     role: "STUDENT",
+        //     name: "Dhruv Shetty",
+        //     password: "1234@#A",
+        //     gradeId: grade.id,
+        //   },
+        //   {
+        //     email: "aman123@gmail.com",
+        //     avatar: "MALE",
+        //     role: "STUDENT",
+        //     name: "Aman Loharuka",
+        //     password: "1234@#A",
+        //     gradeId: grade.id,
+        //   },
+        // ];
+        // for (const testUser of testUsers) {
+        //   usersList.push(testUser);
+        // }
         for (const user of usersList) {
             try {
                 // check if user with the current user's email already exists in db.

@@ -5,6 +5,7 @@ import { parse } from "csv-parse";
 import { CSVRow, readCSVFile } from "../utils/csvParsing";
 import { generatePassword } from "../utils/generatePassword";
 import { validateEmail } from "../utils/emailValidation";
+import { sendEmaiL } from "../utils/sendEmail";
 
 const seedUserInGrades = async (
   gradeIdArr: string[],
@@ -72,6 +73,13 @@ const seedUserInGrades = async (
       });
       console.log(`${user.role} with ${user.email} added`);
     }
+
+    await sendEmaiL(email, password);
+    console.log(
+      `email sent to ${email
+        .trim()
+        .toLowerCase()} for their PrepSOM Login Credentials`
+    );
   } catch (error) {
     console.log("FAILED TO SEED USER IN THE DATABASE:- ", error);
   }
@@ -154,43 +162,35 @@ export const seedUsersInGrade = async (
       };
     });
 
-    const testUsers: {
-      email: string;
-      password: string;
-      name: string;
-      role: "STUDENT" | "TEACHER" | "ADMIN";
-      avatar: "MALE" | "FEMALE";
-      gradeId?: string;
-    }[] = [
-      {
-        email: "admin123@gmail.com",
-        avatar: "MALE",
-        role: "STUDENT",
-        name: "Dhruv Shetty",
-        password: "1234@#A",
-        gradeId: grade.id,
-      },
-      {
-        email: "aman123@gmail.com",
-        avatar: "MALE",
-        role: "STUDENT",
-        name: "Aman Loharuka",
-        password: "1234@#A",
-        gradeId: grade.id,
-      },
-      {
-        email: "rkadmin@gmail.com",
-        avatar: "MALE",
-        role: "STUDENT",
-        name: "RK Admin",
-        password: "@rkadmin456#",
-        gradeId: grade.id,
-      },
-    ];
+    // const testUsers: {
+    //   email: string;
+    //   password: string;
+    //   name: string;
+    //   role: "STUDENT" | "TEACHER" | "ADMIN";
+    //   avatar: "MALE" | "FEMALE";
+    //   gradeId?: string;
+    // }[] = [
+    //   {
+    //     email: "admin123@gmail.com",
+    //     avatar: "MALE",
+    //     role: "STUDENT",
+    //     name: "Dhruv Shetty",
+    //     password: "1234@#A",
+    //     gradeId: grade.id,
+    //   },
+    //   {
+    //     email: "aman123@gmail.com",
+    //     avatar: "MALE",
+    //     role: "STUDENT",
+    //     name: "Aman Loharuka",
+    //     password: "1234@#A",
+    //     gradeId: grade.id,
+    //   },
+    // ];
 
-    for (const testUser of testUsers) {
-      usersList.push(testUser);
-    }
+    // for (const testUser of testUsers) {
+    //   usersList.push(testUser);
+    // }
 
     for (const user of usersList) {
       try {
