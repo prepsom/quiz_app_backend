@@ -136,34 +136,6 @@ const seedUsersInGrade = (gradeNumber, schoolName, csvPath) => __awaiter(void 0,
                 password: (0, generatePassword_1.generatePassword)(),
             };
         });
-        // const testUsers: {
-        //   email: string;
-        //   password: string;
-        //   name: string;
-        //   role: "STUDENT" | "TEACHER" | "ADMIN";
-        //   avatar: "MALE" | "FEMALE";
-        //   gradeId?: string;
-        // }[] = [
-        //   {
-        //     email: "admin123@gmail.com",
-        //     avatar: "MALE",
-        //     role: "STUDENT",
-        //     name: "Dhruv Shetty",
-        //     password: "1234@#A",
-        //     gradeId: grade.id,
-        //   },
-        //   {
-        //     email: "aman123@gmail.com",
-        //     avatar: "MALE",
-        //     role: "STUDENT",
-        //     name: "Aman Loharuka",
-        //     password: "1234@#A",
-        //     gradeId: grade.id,
-        //   },
-        // ];
-        // for (const testUser of testUsers) {
-        //   usersList.push(testUser);
-        // }
         for (const user of usersList) {
             try {
                 // check if user with the current user's email already exists in db.
