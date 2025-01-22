@@ -641,11 +641,11 @@ const completeLevelHandler = async (req: Request, res: Response) => {
                         and provide feedback on the conceptual clarity in the following JSON format:
                         {
                             "remarks": "Personalized remarks based on performance",
-                            "strengths": ["strength1", "strength2", ...],
-                            "weaknesses": ["weakness1", "weakness2", ...],
-                            "recommendations": ["recommendation1", "recommendation2", ...]
+                            "strengths": ["Good hold on the topic of respiration", "strength2", ...],
+                            "weaknesses": ["Weak in identifying process names", "weakness2", ...],
+                            "recommendations": ["Recommend you to get a better understanding in reproductive systems", "recommendation2", ...]
                         }
-                        Each array should typically contain 2-3 points. Write remarks according to the performance. User
+                        Each array should typically contain 2-3 points in conceptual detail. Write remarks according to the performance. User
                         performance can be evaluated from the data you are receiving about questions and its respective responses and 
                         whether the response was correct or not.
                         `,
