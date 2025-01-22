@@ -5,7 +5,7 @@ import { parse } from "csv-parse";
 import { CSVRow, readCSVFile } from "../utils/csvParsing";
 import { generatePassword } from "../utils/generatePassword";
 import { validateEmail } from "../utils/emailValidation";
-import { sendEmaiL } from "../utils/sendEmail";
+import { sendEmail } from "../utils/sendEmail";
 
 const seedUserInGrades = async (
   gradeIdArr: string[],
@@ -26,18 +26,48 @@ const seedUserInGrades = async (
         return;
       }
 
+      const grade = await prisma.grade.findUnique({
+        where: { id: gradeIdArr[0] },
+        include: {
+          school: {
+            select: {
+              schoolName: true,
+            },
+          },
+        },
+      });
+
+      if (!grade) {
+        console.log(`grade with id ${gradeIdArr[0]} not found to add user in`);
+        return;
+      }
+
       user = await prisma.user.create({
         data: {
           email: email.trim().toLowerCase(),
           password: hashedPassword,
           avatar: avatar,
-          gradeId: gradeIdArr[0],
+          gradeId: grade.id,
           name: name,
           role: role,
         },
       });
-
-      console.log(`${user.role} with email ${user.email} added`);
+      const gradeNumber = grade.grade;
+      const schoolName = grade.school.schoolName;
+      console.log(
+        `${user.role} with email ${user.email} added in grade ${gradeNumber} of school ${schoolName}`
+      );
+      await sendEmail(
+        email.trim().toLowerCase(),
+        password,
+        schoolName,
+        gradeNumber
+      );
+      console.log(
+        `email sent to ${email
+          .trim()
+          .toLowerCase()} for their PrepSOM Login Credentials`
+      );
     } else if (role === "TEACHER") {
       // create a entry in users table along with
       // a teacher can teach multiple grades.
@@ -73,13 +103,6 @@ const seedUserInGrades = async (
       });
       console.log(`${user.role} with ${user.email} added`);
     }
-
-    await sendEmaiL(email, password);
-    console.log(
-      `email sent to ${email
-        .trim()
-        .toLowerCase()} for their PrepSOM Login Credentials`
-    );
   } catch (error) {
     console.log("FAILED TO SEED USER IN THE DATABASE:- ", error);
   }
@@ -158,7 +181,7 @@ export const seedUsersInGrade = async (
         name: studentData.name,
         role: studentData.role,
         gradeId: grade.id,
-        password: generatePassword(),
+        password: generatePassword({ length: 6, excludeAmbiguous: true }),
       };
     });
 

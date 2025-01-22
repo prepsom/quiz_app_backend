@@ -26,34 +26,54 @@ const createLevelsInSubject = async (subjectId: string) => {
       passingQuestions: number;
     }[] = [
       {
-        levelName: "Life Processes",
+        levelName: "Microorganisms",
         levelDescription: "",
-        passingQuestions: 11,
+        passingQuestions: 10,
       },
       {
-        levelName: "Control and Coordination",
+        levelName: "Combustion and flame",
         levelDescription: "",
-        passingQuestions: 11,
+        passingQuestions: 10,
       },
       {
-        levelName: "How Do Organisms Reproduce?",
+        levelName: "Conservation",
         levelDescription: "",
-        passingQuestions: 11,
+        passingQuestions: 10,
       },
       {
-        levelName: "Heredity and Evolution",
+        levelName: "Reproduction in animals",
         levelDescription: "",
-        passingQuestions: 11,
+        passingQuestions: 10,
       },
       {
-        levelName: "Our Environment",
+        levelName: "Reaching the adolescence",
         levelDescription: "",
-        passingQuestions: 11,
+        passingQuestions: 10,
       },
       {
-        levelName: "Sustainable Management of Natural Resources",
+        levelName: "Force and Pressure",
         levelDescription: "",
-        passingQuestions: 11,
+        passingQuestions: 10,
+      },
+      {
+        levelName: "Sound",
+        levelDescription: "",
+        passingQuestions: 10,
+      },
+      {
+        levelName: "Electric current",
+        levelDescription: "",
+        passingQuestions: 10,
+      },
+      {
+        levelName: "Natural Phenomena",
+        levelDescription: "",
+        passingQuestions: 10,
+      },
+      {
+        levelName: "Lighting",
+        levelDescription: "",
+        passingQuestions: 10,
       },
     ];
 

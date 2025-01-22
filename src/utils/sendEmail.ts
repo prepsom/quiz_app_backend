@@ -9,13 +9,18 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-async function sendEmaiL(email: string, password: string) {
+async function sendEmail(
+  email: string,
+  password: string,
+  schoolName: string,
+  gradeNumber: number
+) {
   try {
     await transporter.sendMail({
       from: process.env.EMAIL_SENDER,
       to: email.trim().toLowerCase(),
-      subject: "PrepSOM Login Credentials",
-      html: generateEmailTemplate(email, password),
+      subject: `${schoolName.trim()} class ${gradeNumber} Assessment login credentials`,
+      html: generateEmailTemplate(email, password, schoolName),
       replyTo: process.env.EMAIL_SENDER,
     });
   } catch (error) {
@@ -24,7 +29,11 @@ async function sendEmaiL(email: string, password: string) {
   }
 }
 
-const generateEmailTemplate = (email: string, password: string) => {
+const generateEmailTemplate = (
+  email: string,
+  password: string,
+  schoolName: string
+) => {
   const emailHtml = `
 <!DOCTYPE html>
 <html lang="en">
@@ -35,14 +44,15 @@ const generateEmailTemplate = (email: string, password: string) => {
 <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; line-height: 1.6;">
     <div style="max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
         <div style="text-align: center; padding: 20px 0; background-color: #f8f9fa; border-radius: 8px;">
-            <h1 style="color: #2c3e50; margin: 0; font-size: 24px;">Welcome to PrepSOM</h1>
+            <h1 style="color: #2c3e50; margin: 0; font-size: 24px;">Welcome to ${schoolName}</h1>
         </div>
-        
+
         <div style="padding: 30px 20px; background-color: #ffffff;">
-            <p style="color: #555555; font-size: 16px; margin-bottom: 25px;">
-                Thank you for joining PrepSOM. Below are your login credentials:
+            <p style="color: #555555; font-size: 16px; margin-bottom: 10px;">
+                We have created a gamified assessment for you, kindly login to the tool by clicking on the link below.
             </p>
-            
+            <a href="games.prepsom.com">games.prepsom.com</a>
+            <p>Following are your login credentials: </p>
             <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
                 <div style="margin-bottom: 15px;">
                     <strong style="color: #2c3e50; display: inline-block; width: 100px;">Email:</strong>
@@ -72,4 +82,4 @@ const generateEmailTemplate = (email: string, password: string) => {
   return emailHtml;
 };
 
-export { sendEmaiL };
+export { sendEmail };

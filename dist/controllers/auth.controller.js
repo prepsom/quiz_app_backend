@@ -23,19 +23,21 @@ const loginHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* (
         const { email, password } = req.body;
         if (email.trim() === "" || password.trim() === "") {
             res.status(400).json({
-                "success": false,
-                "message": "email and password required to login"
+                success: false,
+                message: "email and password required to login",
             });
             return;
         }
         // check if user with email exists in db
-        const user = yield __1.prisma.user.findUnique({ where: {
+        const user = yield __1.prisma.user.findUnique({
+            where: {
                 email: email.trim().toLowerCase(),
-            } });
+            },
+        });
         if (!user) {
             res.status(400).json({
-                "success": false,
-                "message": "incorrect email or password"
+                success: false,
+                message: "incorrect email or password",
             });
             return;
         }
@@ -43,8 +45,8 @@ const loginHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* (
         const isPasswordCorrect = yield bcrypt_1.default.compare(password, hashedPassword);
         if (!isPasswordCorrect) {
             res.status(400).json({
-                "success": false,
-                "message": "incorrect email or password"
+                success: false,
+                message: "incorrect email or password",
             });
             return;
         }
@@ -54,23 +56,32 @@ const loginHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* (
             expiresIn: "2d",
         });
         // user has logged in -> update last login
-        yield __1.prisma.user.update({ where: { id: user.id }, data: {
+        yield __1.prisma.user.update({
+            where: { id: user.id },
+            data: {
                 lastLogin: new Date(Date.now()),
-            } });
-        res.cookie("auth_token", token, {
+            },
+        });
+        res
+            .cookie("auth_token", token, {
             httpOnly: true,
             path: "/",
             secure: process.env.NODE_ENV === "production",
             sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
             maxAge: 1000 * 60 * 60 * 48,
-        }).status(200).json({
-            "success": true,
+        })
+            .status(200)
+            .json({
+            success: true,
             user,
         });
     }
     catch (error) {
         console.log(error);
-        res.status(500).json({ "success": false, "message": "internal server error when logging in" });
+        res.status(500).json({
+            success: false,
+            message: "internal server error when logging in",
+        });
     }
 });
 exports.loginHandler = loginHandler;
@@ -79,29 +90,29 @@ const getAuthUserHandler = (req, res) => __awaiter(void 0, void 0, void 0, funct
         const userId = req.userId;
         if (!userId) {
             res.status(401).json({
-                "success": false,
-                "message": "authenticated user id not found"
+                success: false,
+                message: "authenticated user id not found",
             });
             return;
         }
         const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
         if (!user) {
             res.status(400).json({
-                "success": false,
-                "message": "invalid user id"
+                success: false,
+                message: "invalid user id",
             });
             return;
         }
         res.status(200).json({
-            "success": true,
+            success: true,
             user,
         });
     }
     catch (error) {
         console.log(error);
         res.status(500).json({
-            "success": false,
-            "message": "internal server error when getting auth user"
+            success: false,
+            message: "internal server error when getting auth user",
         });
     }
 });
@@ -112,28 +123,31 @@ const logoutHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* 
         const userId = req.userId;
         if (!userId) {
             res.status(401).json({
-                "success": false,
-                "message": "authenticated user id not found"
+                success: false,
+                message: "authenticated user id not found",
             });
             return;
         }
         const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
         if (!user) {
             res.status(400).json({
-                "success": false,
-                "message": "invalid user id"
+                success: false,
+                message: "invalid user id",
             });
             return;
         }
-        res.clearCookie("auth_token", {
+        res
+            .clearCookie("auth_token", {
             httpOnly: true,
             path: "/",
             maxAge: 0,
-            sameSite: process.env.NODE_ENV === "production" ? "none" : 'lax',
-            secure: process.env.NODE_ENV === "production"
-        }).status(200).json({
-            "success": true,
-            "message": "user logged out successfully"
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+            secure: process.env.NODE_ENV === "production",
+        })
+            .status(200)
+            .json({
+            success: true,
+            message: "user logged out successfully",
         });
     }
     catch (error) {

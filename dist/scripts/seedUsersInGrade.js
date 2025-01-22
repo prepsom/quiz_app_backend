@@ -29,17 +29,37 @@ const seedUserInGrades = (gradeIdArr, email, name, password, role, avatar) => __
                 console.log("USER CANNOT HAVE MORE THAN 1 GRADE");
                 return;
             }
+            const grade = yield __1.prisma.grade.findUnique({
+                where: { id: gradeIdArr[0] },
+                include: {
+                    school: {
+                        select: {
+                            schoolName: true,
+                        },
+                    },
+                },
+            });
+            if (!grade) {
+                console.log(`grade with id ${gradeIdArr[0]} not found to add user in`);
+                return;
+            }
             user = yield __1.prisma.user.create({
                 data: {
                     email: email.trim().toLowerCase(),
                     password: hashedPassword,
                     avatar: avatar,
-                    gradeId: gradeIdArr[0],
+                    gradeId: grade.id,
                     name: name,
                     role: role,
                 },
             });
-            console.log(`${user.role} with email ${user.email} added`);
+            const gradeNumber = grade.grade;
+            const schoolName = grade.school.schoolName;
+            console.log(`${user.role} with email ${user.email} added in grade ${gradeNumber} of school ${schoolName}`);
+            yield (0, sendEmail_1.sendEmail)(email.trim().toLowerCase(), password, schoolName, gradeNumber);
+            console.log(`email sent to ${email
+                .trim()
+                .toLowerCase()} for their PrepSOM Login Credentials`);
         }
         else if (role === "TEACHER") {
             // create a entry in users table along with
@@ -76,10 +96,6 @@ const seedUserInGrades = (gradeIdArr, email, name, password, role, avatar) => __
             });
             console.log(`${user.role} with ${user.email} added`);
         }
-        yield (0, sendEmail_1.sendEmaiL)(email, password);
-        console.log(`email sent to ${email
-            .trim()
-            .toLowerCase()} for their PrepSOM Login Credentials`);
     }
     catch (error) {
         console.log("FAILED TO SEED USER IN THE DATABASE:- ", error);
@@ -133,7 +149,7 @@ const seedUsersInGrade = (gradeNumber, schoolName, csvPath) => __awaiter(void 0,
                 name: studentData.name,
                 role: studentData.role,
                 gradeId: grade.id,
-                password: (0, generatePassword_1.generatePassword)(),
+                password: (0, generatePassword_1.generatePassword)({ length: 6, excludeAmbiguous: true }),
             };
         });
         for (const user of usersList) {
