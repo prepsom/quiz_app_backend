@@ -21,6 +21,7 @@ export const validateEmail = (email: string) => {
 };
 
 const EMAIL_DOMAINS: string[] = [
+  
   ".com",
   ".net",
   ".org",
