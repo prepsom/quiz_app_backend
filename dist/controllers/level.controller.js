@@ -551,8 +551,24 @@ const completeLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
             ],
         });
         const feedback = openAIResponse.choices[0].message.content;
-        const apiData = JSON.parse(feedback || "");
-        console.log(apiData);
+        let apiData = {
+            remarks: "",
+            strengths: [],
+            weaknesses: [],
+            recommendations: [],
+        };
+        try {
+            apiData = JSON.parse(feedback || "{}");
+        }
+        catch (parseError) {
+            console.log("Failed to parse OpenAI response: ", parseError);
+            apiData = {
+                remarks: "Unable to generate detailed feedback",
+                strengths: ["No specific strengths identified"],
+                weaknesses: ["Unable to analyze performance"],
+                recommendations: ["Review study materials"],
+            };
+        }
         if (!isComplete) {
             res.status(200).json({
                 success: true,
