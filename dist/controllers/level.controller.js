@@ -542,6 +542,7 @@ const completeLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
                         Each array should typically contain 2-3 points in conceptual detail. Write remarks according to the performance. User
                         performance can be evaluated from the data you are receiving about questions and its respective responses and 
                         whether the response was correct or not.
+                        Output JSON directly. DO NOT enclose within json
                         `,
                 },
                 {
@@ -551,6 +552,7 @@ const completeLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
             ],
         });
         const feedback = openAIResponse.choices[0].message.content;
+        console.log(feedback);
         let apiData = {
             remarks: "",
             strengths: [],
@@ -569,6 +571,7 @@ const completeLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
                 recommendations: ["Review study materials"],
             };
         }
+        console.log(apiData);
         if (!isComplete) {
             res.status(200).json({
                 success: true,
@@ -589,8 +592,8 @@ const completeLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
             where: { userId: user.id, levelId: level.id },
         });
         if (completedLevel) {
-            if (totalPointsEarnedInLevel > completedLevel.totalPoints ||
-                noOfCorrectQuestions > completedLevel.noOfCorrectQuestions) {
+            if (totalPointsEarnedInLevel >= completedLevel.totalPoints ||
+                noOfCorrectQuestions >= completedLevel.noOfCorrectQuestions) {
                 yield __1.prisma.userLevelComplete.update({
                     where: { id: completedLevel.id },
                     data: {
