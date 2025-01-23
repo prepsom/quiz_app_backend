@@ -18,7 +18,7 @@ spec:
           secretName: games-tls-certs
       containers:
       - name: prepsom-games-backend
-        image: gcr.io/prepsom/prepsom-games-backend:latest
+        image: gcr.io/prepsom/github.com/dhruv15803/quiz_app_backend:latest
         volumeMounts:
         - name: games-tls-certs
           mountPath: "/apps/prepsom-games-backend/certs"
