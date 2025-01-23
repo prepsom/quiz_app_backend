@@ -1,13 +1,13 @@
 import { Request, Response } from "express";
 import { prisma } from "..";
 import { User } from "@prisma/client";
-
 import bcrypt from "bcrypt";
 
 const getTotalPointsHandler = async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
     const user = await prisma.user.findUnique({ where: { id: userId } });
+
     if (!user) {
       res.status(400).json({
         success: false,

@@ -232,7 +232,7 @@ function transformToExampleData(parsedQuestions: ParsedQuestion[]) {
 function mapQuestionType(type: string): QuestionType {
   const typeMap: Record<string, QuestionType> = {
     MCQ: "MCQ",
-    "Fill-in-the-Blank": "FILL_IN_BLANK",
+    "Fill-in-the-blank": "FILL_IN_BLANK",
     "Match the Following": "MATCHING",
   };
   return typeMap[type] || (type as QuestionType);

@@ -28,52 +28,32 @@ const createLevelsInSubject = (subjectId) => __awaiter(void 0, void 0, void 0, f
         const highestPosition = highestLevel.length === 1 ? highestLevel[0].position : -1;
         const levelsData = [
             {
-                levelName: "Microorganisms",
+                levelName: "Life Processes",
                 levelDescription: "",
                 passingQuestions: 10,
             },
             {
-                levelName: "Combustion and flame",
+                levelName: "Control and Coordination",
                 levelDescription: "",
                 passingQuestions: 10,
             },
             {
-                levelName: "Conservation",
+                levelName: "How Do Organisms Reproduce?",
                 levelDescription: "",
                 passingQuestions: 10,
             },
             {
-                levelName: "Reproduction in animals",
+                levelName: "Heredity and Evolution",
                 levelDescription: "",
                 passingQuestions: 10,
             },
             {
-                levelName: "Reaching the adolescence",
+                levelName: "Our Environment",
                 levelDescription: "",
                 passingQuestions: 10,
             },
             {
-                levelName: "Force and Pressure",
-                levelDescription: "",
-                passingQuestions: 10,
-            },
-            {
-                levelName: "Sound",
-                levelDescription: "",
-                passingQuestions: 10,
-            },
-            {
-                levelName: "Electric current",
-                levelDescription: "",
-                passingQuestions: 10,
-            },
-            {
-                levelName: "Natural Phenomena",
-                levelDescription: "",
-                passingQuestions: 10,
-            },
-            {
-                levelName: "Lighting",
+                levelName: "Sustainable Management of Natural Resources",
                 levelDescription: "",
                 passingQuestions: 10,
             },

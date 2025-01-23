@@ -8,6 +8,13 @@ type LoginRequestBody = {
   password: string;
 };
 
+type RegisterRequestBody = {
+  email: string;
+  password: string;
+  name: string;
+  grade: number;
+};
+
 const loginHandler = async (req: Request, res: Response) => {
   try {
     // email and password
@@ -88,6 +95,88 @@ const loginHandler = async (req: Request, res: Response) => {
   }
 };
 
+const registerUserHandler = async (req: Request, res: Response) => {
+  // any user registering will be part of the default prepsom school in their specified grade
+  try {
+    const { email, grade, name, password } = req.body as RegisterRequestBody;
+    const defaultSchoolName = "PrepSOM School";
+
+    const school = await prisma.school.findFirst({
+      where: { schoolName: defaultSchoolName.trim() },
+    });
+
+    if (!school) {
+      console.log("DEFAULT SCHOOL DOESNT EXIST");
+      res.status(500).json({
+        success: false,
+        message: "internal server error when registering user",
+      });
+      return;
+    }
+
+    // get grade id for the particular grade the user wants to be a part of  in default school
+    const gradeResult = await prisma.grade.findFirst({
+      where: { grade: grade, schoolId: school.id },
+    });
+    if (!gradeResult) {
+      res.status(400).json({
+        success: false,
+        message: `grade ${grade} not found in default school`,
+      });
+      return;
+    }
+    const gradeId = gradeResult.id;
+
+    // check if user exists in db
+    const existingUser = await prisma.user.findUnique({
+      where: { email: email.trim().toLowerCase() },
+    });
+    if (existingUser) {
+      res.status(400).json({ success: false, message: "user already exists" });
+      return;
+    }
+
+    const saltRounds = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password.trim(), saltRounds);
+
+    const newUser = await prisma.user.create({
+      data: {
+        email: email.trim().toLowerCase(),
+        name: name,
+        password: hashedPassword,
+        gradeId: gradeId,
+        role: "STUDENT",
+      },
+    });
+
+    const token = jwt.sign(
+      { userId: newUser.id },
+      process.env.JWT_SECRET as string,
+      {
+        expiresIn: "2d",
+      }
+    );
+    res
+      .cookie("auth_token", token, {
+        httpOnly: true,
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        maxAge: 1000 * 60 * 60 * 48,
+      })
+      .json({
+        success: true,
+        user: newUser,
+      });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      success: false,
+      message: "intenral server error when registering",
+    });
+  }
+};
+
 const getAuthUserHandler = async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
@@ -158,4 +247,4 @@ const logoutHandler = async (req: Request, res: Response) => {
   }
 };
 
-export { loginHandler, getAuthUserHandler, logoutHandler };
+export { loginHandler, getAuthUserHandler, logoutHandler, registerUserHandler };

@@ -172,7 +172,7 @@ function transformToExampleData(parsedQuestions) {
 function mapQuestionType(type) {
     const typeMap = {
         MCQ: "MCQ",
-        "Fill-in-the-Blank": "FILL_IN_BLANK",
+        "Fill-in-the-blank": "FILL_IN_BLANK",
         "Match the Following": "MATCHING",
     };
     return typeMap[type] || type;
