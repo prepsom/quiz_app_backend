@@ -88,6 +88,7 @@ exports.loginHandler = loginHandler;
 const registerUserHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     // any user registering will be part of the default prepsom school in their specified grade
     try {
+        console.log("registering");
         const { email, grade, name, password } = req.body;
         const defaultSchoolName = "PrepSOM School";
         const school = yield __1.prisma.school.findFirst({
