@@ -27,7 +27,7 @@ const seedSubjectsInGrade = (gradeNumber, schoolName) => __awaiter(void 0, void 
             console.log(`Grade ${gradeNumber} not found`);
             return;
         }
-        const subjects = ["Science", "Mathematics", "Computer"];
+        const subjects = ["Science", "Mathematics"];
         yield __1.prisma.subject.createMany({
             data: subjects.map((subject) => {
                 return {

@@ -31,8 +31,8 @@ function parseMatchingRow(optionsStr: string): [string, string] {
 }
 
 function parseMCQOption(option: string): string {
-  // Remove the option letter and parentheses, e.g., "(a) Stem" -> "Stem"
-  return option.replace(/^\([a-z]\)\s*/i, "").trim();
+  // Remove both "(a) " and "a) " prefixes
+  return option.replace(/^[a-z]\)|^\([a-z]\)\s*/i, "").trim();
 }
 
 function parseQuestionsCsv(filePath: string) {

@@ -22,7 +22,7 @@ export const seedSubjectsInGrade = async (
       return;
     }
 
-    const subjects: string[] = ["Science", "Mathematics", "Computer"];
+    const subjects: string[] = ["Science", "Mathematics"];
 
     await prisma.subject.createMany({
       data: subjects.map((subject: string) => {

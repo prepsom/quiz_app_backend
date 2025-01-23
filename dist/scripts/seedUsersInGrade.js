@@ -18,6 +18,7 @@ const bcrypt_1 = __importDefault(require("bcrypt"));
 const csvParsing_1 = require("../utils/csvParsing");
 const generatePassword_1 = require("../utils/generatePassword");
 const emailValidation_1 = require("../utils/emailValidation");
+const sendEmail_1 = require("../utils/sendEmail");
 const seedUserInGrades = (gradeIdArr, email, name, password, role, avatar) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const salt = yield bcrypt_1.default.genSalt(10);
@@ -28,17 +29,37 @@ const seedUserInGrades = (gradeIdArr, email, name, password, role, avatar) => __
                 console.log("USER CANNOT HAVE MORE THAN 1 GRADE");
                 return;
             }
+            const grade = yield __1.prisma.grade.findUnique({
+                where: { id: gradeIdArr[0] },
+                include: {
+                    school: {
+                        select: {
+                            schoolName: true,
+                        },
+                    },
+                },
+            });
+            if (!grade) {
+                console.log(`grade with id ${gradeIdArr[0]} not found to add user in`);
+                return;
+            }
             user = yield __1.prisma.user.create({
                 data: {
                     email: email.trim().toLowerCase(),
                     password: hashedPassword,
                     avatar: avatar,
-                    gradeId: gradeIdArr[0],
+                    gradeId: grade.id,
                     name: name,
                     role: role,
                 },
             });
-            console.log(`${user.role} with email ${user.email} added`);
+            const gradeNumber = grade.grade;
+            const schoolName = grade.school.schoolName;
+            console.log(`${user.role} with email ${user.email} added in grade ${gradeNumber} of school ${schoolName}`);
+            yield (0, sendEmail_1.sendEmail)(email.trim().toLowerCase(), password, schoolName, gradeNumber);
+            console.log(`email sent to ${email
+                .trim()
+                .toLowerCase()} for their PrepSOM Login Credentials`);
         }
         else if (role === "TEACHER") {
             // create a entry in users table along with
@@ -128,30 +149,9 @@ const seedUsersInGrade = (gradeNumber, schoolName, csvPath) => __awaiter(void 0,
                 name: studentData.name,
                 role: studentData.role,
                 gradeId: grade.id,
-                password: (0, generatePassword_1.generatePassword)(),
+                password: (0, generatePassword_1.generatePassword)({ length: 6, excludeAmbiguous: true }),
             };
         });
-        const testUsers = [
-            {
-                email: "admin123@gmail.com",
-                avatar: "MALE",
-                role: "STUDENT",
-                name: "Dhruv Shetty",
-                password: "1234@#A",
-                gradeId: grade.id,
-            },
-            {
-                email: "aman123@gmail.com",
-                avatar: "MALE",
-                role: "STUDENT",
-                name: "Aman Loharuka",
-                password: "1234@#A",
-                gradeId: grade.id,
-            },
-        ];
-        for (const testUser of testUsers) {
-            usersList.push(testUser);
-        }
         for (const user of usersList) {
             try {
                 // check if user with the current user's email already exists in db.
@@ -175,6 +175,8 @@ const seedUsersInGrade = (gradeNumber, schoolName, csvPath) => __awaiter(void 0,
                 throw new Error(`FAILED to seed user with email  ${user.email} in DB`);
             }
         }
+        // if here then all users in the usersList were seeded
+        // if all seeded successfully then send email to all of them with their login credentials.
         console.log(`SEEDED USERS IN GRADE ${gradeNumber} in school ${schoolName}`);
     }
     catch (error) {

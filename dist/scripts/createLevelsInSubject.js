@@ -30,32 +30,32 @@ const createLevelsInSubject = (subjectId) => __awaiter(void 0, void 0, void 0, f
             {
                 levelName: "Life Processes",
                 levelDescription: "",
-                passingQuestions: 11,
+                passingQuestions: 10,
             },
             {
                 levelName: "Control and Coordination",
                 levelDescription: "",
-                passingQuestions: 11,
+                passingQuestions: 10,
             },
             {
                 levelName: "How Do Organisms Reproduce?",
                 levelDescription: "",
-                passingQuestions: 11,
+                passingQuestions: 10,
             },
             {
                 levelName: "Heredity and Evolution",
                 levelDescription: "",
-                passingQuestions: 11,
+                passingQuestions: 10,
             },
             {
                 levelName: "Our Environment",
                 levelDescription: "",
-                passingQuestions: 11,
+                passingQuestions: 10,
             },
             {
                 levelName: "Sustainable Management of Natural Resources",
                 levelDescription: "",
-                passingQuestions: 11,
+                passingQuestions: 10,
             },
         ];
         let currentLevelPosition = highestPosition + 1;
