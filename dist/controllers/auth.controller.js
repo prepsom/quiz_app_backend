@@ -89,7 +89,7 @@ const registerUserHandler = (req, res) => __awaiter(void 0, void 0, void 0, func
     // any user registering will be part of the default prepsom school in their specified grade
     try {
         console.log("registering");
-        const { email, grade, name, password } = req.body;
+        const { email, grade, name, password, phoneNumber, schoolName } = req.body;
         const defaultSchoolName = "PrepSOM School";
         const school = yield __1.prisma.school.findFirst({
             where: { schoolName: defaultSchoolName.trim() },
@@ -131,6 +131,8 @@ const registerUserHandler = (req, res) => __awaiter(void 0, void 0, void 0, func
                 password: hashedPassword,
                 gradeId: gradeId,
                 role: "STUDENT",
+                phoneNumber: phoneNumber.toString(),
+                schoolName: schoolName.trim(),
             },
         });
         const token = jsonwebtoken_1.default.sign({ userId: newUser.id }, process.env.JWT_SECRET, {

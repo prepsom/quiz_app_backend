@@ -94,6 +94,8 @@ const getLeaderBoardHandler = (req, res) => __awaiter(void 0, void 0, void 0, fu
                     password: user.password,
                     role: user.role,
                     lastLogin: user.lastLogin,
+                    schoolName: user.schoolName,
+                    phoneNumber: user.phoneNumber,
                 },
                 totalPoints: sum,
             });

@@ -95,6 +95,8 @@ const getLeaderBoardHandler = async (req: Request, res: Response) => {
           password: user.password,
           role: user.role,
           lastLogin: user.lastLogin,
+          schoolName: user.schoolName,
+          phoneNumber: user.phoneNumber,
         },
         totalPoints: sum,
       });

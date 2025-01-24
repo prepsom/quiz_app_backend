@@ -13,6 +13,8 @@ type RegisterRequestBody = {
   password: string;
   name: string;
   grade: number;
+  schoolName: string;
+  phoneNumber: number;
 };
 
 const loginHandler = async (req: Request, res: Response) => {
@@ -99,7 +101,8 @@ const registerUserHandler = async (req: Request, res: Response) => {
   // any user registering will be part of the default prepsom school in their specified grade
   try {
     console.log("registering");
-    const { email, grade, name, password } = req.body as RegisterRequestBody;
+    const { email, grade, name, password, phoneNumber, schoolName } =
+      req.body as RegisterRequestBody;
     const defaultSchoolName = "PrepSOM School";
 
     const school = await prisma.school.findFirst({
@@ -147,6 +150,8 @@ const registerUserHandler = async (req: Request, res: Response) => {
         password: hashedPassword,
         gradeId: gradeId,
         role: "STUDENT",
+        phoneNumber: phoneNumber.toString(),
+        schoolName: schoolName.trim(),
       },
     });
 
