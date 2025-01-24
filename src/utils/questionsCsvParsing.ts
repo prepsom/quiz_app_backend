@@ -32,7 +32,8 @@ function parseMatchingRow(optionsStr: string): [string, string] {
 
 function parseMCQOption(option: string): string {
   // Remove both "(a) " and "a) " prefixes
-  return option.replace(/^[a-z]\)|^\([a-z]\)\s*/i, "").trim();
+  // "A.Bacteria" to "Bacteria"
+  return option.replace(/^[a-z]\.?\s*/i, "").trim();
 }
 
 function parseQuestionsCsv(filePath: string) {
@@ -232,7 +233,7 @@ function transformToExampleData(parsedQuestions: ParsedQuestion[]) {
 function mapQuestionType(type: string): QuestionType {
   const typeMap: Record<string, QuestionType> = {
     MCQ: "MCQ",
-    "Fill-in-the-Blank": "FILL_IN_BLANK",
+    "Fill in the blank": "FILL_IN_BLANK",
     "Match the Following": "MATCHING",
   };
   return typeMap[type] || (type as QuestionType);

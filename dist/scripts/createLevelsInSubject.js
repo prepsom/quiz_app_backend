@@ -28,7 +28,27 @@ const createLevelsInSubject = (subjectId) => __awaiter(void 0, void 0, void 0, f
         const highestPosition = highestLevel.length === 1 ? highestLevel[0].position : -1;
         const levelsData = [
             {
-                levelName: "Sound",
+                levelName: "Skin",
+                levelDescription: "",
+                passingQuestions: 6,
+            },
+            {
+                levelName: "Respiratory System",
+                levelDescription: "",
+                passingQuestions: 6,
+            },
+            {
+                levelName: "Nutrition",
+                levelDescription: "",
+                passingQuestions: 6,
+            },
+            {
+                levelName: "Digestive system",
+                levelDescription: "",
+                passingQuestions: 6,
+            },
+            {
+                levelName: "Skeleton",
                 levelDescription: "",
                 passingQuestions: 6,
             },

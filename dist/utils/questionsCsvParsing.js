@@ -17,7 +17,8 @@ function parseMatchingRow(optionsStr) {
 }
 function parseMCQOption(option) {
     // Remove both "(a) " and "a) " prefixes
-    return option.replace(/^[a-z]\)|^\([a-z]\)\s*/i, "").trim();
+    // "A.Bacteria" to "Bacteria"
+    return option.replace(/^[a-z]\.?\s*/i, "").trim();
 }
 function parseQuestionsCsv(filePath) {
     const fileContent = fs_1.default.readFileSync(filePath, "utf-8");
@@ -172,7 +173,7 @@ function transformToExampleData(parsedQuestions) {
 function mapQuestionType(type) {
     const typeMap = {
         MCQ: "MCQ",
-        "Fill-in-the-Blank": "FILL_IN_BLANK",
+        "Fill in the blank": "FILL_IN_BLANK",
         "Match the Following": "MATCHING",
     };
     return typeMap[type] || type;
