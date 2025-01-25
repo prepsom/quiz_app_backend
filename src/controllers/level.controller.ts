@@ -710,21 +710,15 @@ const completeLevelHandler = async (req: Request, res: Response) => {
     });
 
     if (completedLevel) {
-      if (
-        totalPointsEarnedInLevel >= completedLevel.totalPoints ||
-        noOfCorrectQuestions >= completedLevel.noOfCorrectQuestions
-      ) {
+      // if user has already completed level then here
+      // check it totalPointsEarnedInLevel is greater than the previous best attempt in UserLevelComplete table
+      if (totalPointsEarnedInLevel >= completedLevel.totalPoints) {
+        // update the attempt with the greater points
         await prisma.userLevelComplete.update({
           where: { id: completedLevel.id },
           data: {
-            totalPoints: Math.max(
-              totalPointsEarnedInLevel,
-              completedLevel.totalPoints
-            ),
-            noOfCorrectQuestions: Math.max(
-              noOfCorrectQuestions,
-              completedLevel.noOfCorrectQuestions
-            ),
+            totalPoints: totalPointsEarnedInLevel,
+            noOfCorrectQuestions: noOfCorrectQuestions,
             strengths: apiData.strengths,
             weaknesses: apiData.weaknesses,
             recommendations: apiData.recommendations,
