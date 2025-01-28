@@ -87,18 +87,18 @@ const loginHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* (
 exports.loginHandler = loginHandler;
 const registerUserHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     // any user registering will be part of the default prepsom school in their specified grade
+    //
     try {
         console.log("registering");
-        const { email, grade, name, password, phoneNumber, schoolName } = req.body;
-        const defaultSchoolName = "PrepSOM School";
-        const school = yield __1.prisma.school.findFirst({
-            where: { schoolName: defaultSchoolName.trim() },
+        const { email, grade, name, password, phoneNumber, schoolName, schoolId } = req.body;
+        const school = yield __1.prisma.school.findUnique({
+            where: { id: schoolId },
         });
         if (!school) {
-            console.log("DEFAULT SCHOOL DOESNT EXIST");
-            res.status(500).json({
+            console.log("SCHOOL with id DOESNT EXIST");
+            res.status(400).json({
                 success: false,
-                message: "internal server error when registering user",
+                message: "school not found",
             });
             return;
         }

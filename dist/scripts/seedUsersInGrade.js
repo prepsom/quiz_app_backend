@@ -18,8 +18,8 @@ const bcrypt_1 = __importDefault(require("bcrypt"));
 const csvParsing_1 = require("../utils/csvParsing");
 const generatePassword_1 = require("../utils/generatePassword");
 const emailValidation_1 = require("../utils/emailValidation");
-const sendEmail_1 = require("../utils/sendEmail");
-const seedUserInGrades = (gradeIdArr, email, name, password, role, avatar) => __awaiter(void 0, void 0, void 0, function* () {
+const sendWhatsappMessage_1 = require("../utils/sendWhatsappMessage");
+const seedUserInGrades = (gradeIdArr, email, name, password, role, avatar, phoneNumber) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const salt = yield bcrypt_1.default.genSalt(10);
         const hashedPassword = yield bcrypt_1.default.hash(password, salt);
@@ -56,10 +56,8 @@ const seedUserInGrades = (gradeIdArr, email, name, password, role, avatar) => __
             const gradeNumber = grade.grade;
             const schoolName = grade.school.schoolName;
             console.log(`${user.role} with email ${user.email} added in grade ${gradeNumber} of school ${schoolName}`);
-            yield (0, sendEmail_1.sendEmail)(email.trim().toLowerCase(), password, schoolName, gradeNumber);
-            console.log(`email sent to ${email
-                .trim()
-                .toLowerCase()} for their PrepSOM Login Credentials`);
+            yield (0, sendWhatsappMessage_1.sendWhatsappMessageWithAccountCredentials)(email.trim().toLowerCase(), password.trim(), phoneNumber);
+            console.log(`message sent to ${phoneNumber} for their PrepSOM Login Credentials`);
         }
         else if (role === "TEACHER") {
             // create a entry in users table along with
@@ -110,6 +108,7 @@ const readStudentsCsvData = (csvPath) => __awaiter(void 0, void 0, void 0, funct
                 name: data["Full Name"],
                 role: "STUDENT",
                 avatar: data.Gender === "Male" ? "MALE" : "FEMALE",
+                phoneNumber: data["Contact Number (for login)"].toString().trim(),
             };
         });
         return studentsData;
@@ -150,6 +149,7 @@ const seedUsersInGrade = (gradeNumber, schoolName, csvPath) => __awaiter(void 0,
                 role: studentData.role,
                 gradeId: grade.id,
                 password: (0, generatePassword_1.generatePassword)({ length: 6, excludeAmbiguous: true }),
+                phoneNumber: studentData.phoneNumber,
             };
         });
         for (const user of usersList) {
@@ -168,7 +168,7 @@ const seedUsersInGrade = (gradeNumber, schoolName, csvPath) => __awaiter(void 0,
                     console.log(`SKIPPING user with email id ${user.email} as it already exists`);
                     continue;
                 }
-                yield seedUserInGrades(user.gradeId !== undefined ? [user.gradeId] : [], user.email, user.name, user.password, user.role, user.avatar);
+                yield seedUserInGrades(user.gradeId !== undefined ? [user.gradeId] : [], user.email, user.name, user.password, user.role, user.avatar, user.phoneNumber);
             }
             catch (error) {
                 console.log(error);

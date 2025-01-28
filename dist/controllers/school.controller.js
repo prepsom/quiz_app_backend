@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getSchoolNameByGradeHandler = void 0;
+exports.getSchoolBySchoolNameHandler = exports.getSchoolNameByGradeHandler = void 0;
 const __1 = require("..");
 const getSchoolNameByGradeHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -36,3 +36,30 @@ const getSchoolNameByGradeHandler = (req, res) => __awaiter(void 0, void 0, void
     }
 });
 exports.getSchoolNameByGradeHandler = getSchoolNameByGradeHandler;
+const getSchoolBySchoolNameHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { schoolName } = req.params;
+        if (!schoolName.trim()) {
+            res
+                .status(400)
+                .json({ success: false, message: "school name is empty of undefined" });
+            return;
+        }
+        const school = yield __1.prisma.school.findFirst({
+            where: { schoolName: schoolName.trim() },
+        });
+        if (!school) {
+            res.status(400).json({
+                success: false,
+                message: `school with name ${schoolName.trim()} not found`,
+            });
+            return;
+        }
+        res.status(200).json({ success: true, school });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({ success: false, message: "internal server error" });
+    }
+});
+exports.getSchoolBySchoolNameHandler = getSchoolBySchoolNameHandler;

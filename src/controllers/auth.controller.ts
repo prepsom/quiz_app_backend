@@ -13,8 +13,9 @@ type RegisterRequestBody = {
   password: string;
   name: string;
   grade: number;
-  schoolName: string;
-  phoneNumber: number;
+  schoolName: string; // extra user data just for default schools
+  phoneNumber: number; // extra user data
+  schoolId: string; // actual id of school the user is registering themselsves in
 };
 
 const loginHandler = async (req: Request, res: Response) => {
@@ -99,21 +100,21 @@ const loginHandler = async (req: Request, res: Response) => {
 
 const registerUserHandler = async (req: Request, res: Response) => {
   // any user registering will be part of the default prepsom school in their specified grade
+  //
   try {
     console.log("registering");
-    const { email, grade, name, password, phoneNumber, schoolName } =
+    const { email, grade, name, password, phoneNumber, schoolName, schoolId } =
       req.body as RegisterRequestBody;
-    const defaultSchoolName = "PrepSOM School";
 
-    const school = await prisma.school.findFirst({
-      where: { schoolName: defaultSchoolName.trim() },
+    const school = await prisma.school.findUnique({
+      where: { id: schoolId },
     });
 
     if (!school) {
-      console.log("DEFAULT SCHOOL DOESNT EXIST");
-      res.status(500).json({
+      console.log("SCHOOL with id DOESNT EXIST");
+      res.status(400).json({
         success: false,
-        message: "internal server error when registering user",
+        message: "school not found",
       });
       return;
     }

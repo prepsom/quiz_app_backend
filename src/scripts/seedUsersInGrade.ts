@@ -6,6 +6,7 @@ import { CSVRow, readCSVFile } from "../utils/csvParsing";
 import { generatePassword } from "../utils/generatePassword";
 import { validateEmail } from "../utils/emailValidation";
 import { sendEmail } from "../utils/sendEmail";
+import { sendWhatsappMessageWithAccountCredentials } from "../utils/sendWhatsappMessage";
 
 const seedUserInGrades = async (
   gradeIdArr: string[],
@@ -13,7 +14,8 @@ const seedUserInGrades = async (
   name: string,
   password: string,
   role: "STUDENT" | "TEACHER" | "ADMIN",
-  avatar: "MALE" | "FEMALE"
+  avatar: "MALE" | "FEMALE",
+  phoneNumber: string
 ) => {
   try {
     const salt = await bcrypt.genSalt(10);
@@ -57,16 +59,13 @@ const seedUserInGrades = async (
       console.log(
         `${user.role} with email ${user.email} added in grade ${gradeNumber} of school ${schoolName}`
       );
-      await sendEmail(
+      await sendWhatsappMessageWithAccountCredentials(
         email.trim().toLowerCase(),
-        password,
-        schoolName,
-        gradeNumber
+        password.trim(),
+        phoneNumber
       );
       console.log(
-        `email sent to ${email
-          .trim()
-          .toLowerCase()} for their PrepSOM Login Credentials`
+        `message sent to ${phoneNumber} for their PrepSOM Login Credentials`
       );
     } else if (role === "TEACHER") {
       // create a entry in users table along with
@@ -116,12 +115,14 @@ const readStudentsCsvData = async (csvPath: string) => {
       name: string;
       role: "STUDENT" | "TEACHER" | "ADMIN";
       avatar: "MALE" | "FEMALE";
+      phoneNumber: string;
     }[] = data.map((data: CSVRow) => {
       return {
         email: data["Email ID (for Login)"],
         name: data["Full Name"],
         role: "STUDENT",
         avatar: data.Gender === "Male" ? "MALE" : "FEMALE",
+        phoneNumber: data["Contact Number (for login)"].toString().trim(),
       };
     });
 
@@ -174,6 +175,7 @@ export const seedUsersInGrade = async (
       role: "STUDENT" | "TEACHER" | "ADMIN";
       avatar: "MALE" | "FEMALE";
       gradeId?: string;
+      phoneNumber: string;
     }[] = studentsCsvData.map((studentData) => {
       return {
         email: studentData.email,
@@ -182,6 +184,7 @@ export const seedUsersInGrade = async (
         role: studentData.role,
         gradeId: grade.id,
         password: generatePassword({ length: 6, excludeAmbiguous: true }),
+        phoneNumber: studentData.phoneNumber,
       };
     });
 
@@ -215,7 +218,8 @@ export const seedUsersInGrade = async (
           user.name,
           user.password,
           user.role,
-          user.avatar
+          user.avatar,
+          user.phoneNumber
         );
       } catch (error) {
         console.log(error);

@@ -29,4 +29,32 @@ const getSchoolNameByGradeHandler = async (req: Request, res: Response) => {
   }
 };
 
-export { getSchoolNameByGradeHandler };
+const getSchoolBySchoolNameHandler = async (req: Request, res: Response) => {
+  try {
+    const { schoolName } = req.params as { schoolName: string };
+    if (!schoolName.trim()) {
+      res
+        .status(400)
+        .json({ success: false, message: "school name is empty of undefined" });
+      return;
+    }
+
+    const school = await prisma.school.findFirst({
+      where: { schoolName: schoolName.trim() },
+    });
+    if (!school) {
+      res.status(400).json({
+        success: false,
+        message: `school with name ${schoolName.trim()} not found`,
+      });
+      return;
+    }
+
+    res.status(200).json({ success: true, school });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, message: "internal server error" });
+  }
+};
+
+export { getSchoolNameByGradeHandler, getSchoolBySchoolNameHandler };
