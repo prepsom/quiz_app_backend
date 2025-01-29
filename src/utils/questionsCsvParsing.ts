@@ -31,9 +31,8 @@ function parseMatchingRow(optionsStr: string): [string, string] {
 }
 
 function parseMCQOption(option: string): string {
-  // Remove both "(a) " and "a) " prefixes
-  // "A.Bacteria" to "Bacteria"
-  return option.replace(/^[a-z]\.?\s*/i, "").trim();
+  // Remove prefixes like "a) ", "A) ", "a. ", "A. ", etc., and trim whitespace
+  return option.replace(/^[a-zA-Z][.)]\s*/, "").trim();
 }
 
 function parseQuestionsCsv(filePath: string) {

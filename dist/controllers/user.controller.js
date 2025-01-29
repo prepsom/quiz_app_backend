@@ -12,9 +12,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateUserPasswordHandler = exports.updateUserNameHandler = exports.isUserPasswordCorrect = exports.getLeaderBoardHandler = exports.getTotalPointsHandler = void 0;
+exports.resetPasswordHandler = exports.forgotPasswordHandler = exports.updateUserPasswordHandler = exports.updateUserNameHandler = exports.isUserPasswordCorrect = exports.getLeaderBoardHandler = exports.getTotalPointsHandler = void 0;
 const __1 = require("..");
 const bcrypt_1 = __importDefault(require("bcrypt"));
+const crypto_1 = __importDefault(require("crypto"));
+const sendResetPasswordMail_1 = require("../utils/sendResetPasswordMail");
+const date_fns_1 = require("date-fns");
 const getTotalPointsHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const userId = req.userId;
@@ -96,6 +99,8 @@ const getLeaderBoardHandler = (req, res) => __awaiter(void 0, void 0, void 0, fu
                     lastLogin: user.lastLogin,
                     schoolName: user.schoolName,
                     phoneNumber: user.phoneNumber,
+                    hashedToken: user.hashedToken,
+                    tokenExpirationDate: user.tokenExpirationDate,
                 },
                 totalPoints: sum,
             });
@@ -251,6 +256,109 @@ const updateUserPasswordHandler = (req, res) => __awaiter(void 0, void 0, void 0
     }
 });
 exports.updateUserPasswordHandler = updateUserPasswordHandler;
+const forgotPasswordHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { email } = req.body;
+        if (!email.trim()) {
+            res.status(400).json({ success: false, message: "email is required" });
+            return;
+        }
+        const user = yield __1.prisma.user.findUnique({
+            where: { email: email.trim().toLowerCase() },
+        });
+        if (!user) {
+            res
+                .status(400)
+                .json({ success: false, message: "user with email not found" });
+            return;
+        }
+        // generate a token
+        // hash the token and store in db for the current user with the expiration date
+        // send a reset url link with the token to the email
+        const token = crypto_1.default.randomBytes(20).toString("hex");
+        const hashedToken = crypto_1.default.createHash("sha256").update(token).digest("hex");
+        const resetPasswordUrl = `${process.env.CLIENT_URL}/reset-password/${token}`;
+        const tokenExpirationDateTime = Date.now() + 15 * (1000 * 60);
+        // save the hashed token and expiration date in the db for the particular user
+        yield __1.prisma.user.update({
+            where: { id: user.id },
+            data: {
+                hashedToken: hashedToken,
+                tokenExpirationDate: new Date(tokenExpirationDateTime),
+            },
+        });
+        // send reset password email with the resetUrlLink to the user's email
+        yield (0, sendResetPasswordMail_1.sendResetPasswordMail)(email.trim().toLowerCase(), resetPasswordUrl);
+        res.status(200).json({
+            success: true,
+            message: "forgot password email sent successfully",
+            email: email.trim().toLowerCase(),
+        });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({ success: false, message: "Internal server error" });
+    }
+});
+exports.forgotPasswordHandler = forgotPasswordHandler;
+const resetPasswordHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { newPassword, token } = req.body;
+        // validate new password
+        if (!validatePassword(newPassword.trim())) {
+            res.status(400).json({ success: false, message: "weak password" });
+            return;
+        }
+        const newHashedToken = crypto_1.default
+            .createHash("sha256")
+            .update(token)
+            .digest("hex");
+        // check if user with the hashed token exists
+        const user = yield __1.prisma.user.findFirst({
+            where: { hashedToken: newHashedToken },
+        });
+        if (!user) {
+            res.status(400).json({ success: false, message: "invalid token" });
+            return;
+        }
+        const tokenExpirationDate = user.tokenExpirationDate;
+        if (!tokenExpirationDate) {
+            res.status(500).json({
+                success: false,
+                message: "reset password token expiration date error",
+            });
+            return;
+        }
+        const currentDate = new Date();
+        if ((0, date_fns_1.compareAsc)(currentDate, tokenExpirationDate) === 1) {
+            res.status(400).json({ success: false, message: "link expired" });
+            return;
+        }
+        // compareAsc(currentDate,tokeExpirationDate) was 0 or -1 here i.e currentDate was the same or before the expiration date
+        // hash the new password and update it
+        const salt = yield bcrypt_1.default.genSalt(10);
+        const newHashedPassword = yield bcrypt_1.default.hash(newPassword.trim(), salt);
+        const newUser = yield __1.prisma.user.update({
+            where: { id: user.id },
+            data: {
+                password: newHashedPassword,
+                hashedToken: null,
+                tokenExpirationDate: null,
+            },
+        });
+        res
+            .status(200)
+            .json({ success: true, message: "password resetted succecsfully" });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({
+            success: false,
+            message: "internal server error",
+        });
+    }
+});
+exports.resetPasswordHandler = resetPasswordHandler;
 const validatePassword = (password) => {
     // password requirements
     // need to have atleast 6 characters

@@ -42,7 +42,14 @@ spec:
             secretKeyRef:
               name: secrets
               key: JWT_SECRET
+        - name: EMAIL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: secrets
+              key: EMAIL_PASSWORD
         - name: CLIENT_URL
           value: https://games.prepsom.com
         - name: PORT
           value: "8000"
+        - name: EMAIL_USERNAME
+          value: contact@prepsom.com
