@@ -2,6 +2,9 @@ import { Request, Response } from "express";
 import { prisma } from "..";
 import { User } from "@prisma/client";
 import bcrypt from "bcrypt";
+import crypto from "crypto";
+import { sendResetPasswordMail } from "../utils/sendResetPasswordMail";
+import { compareAsc } from "date-fns";
 
 const getTotalPointsHandler = async (req: Request, res: Response) => {
   try {
@@ -97,6 +100,8 @@ const getLeaderBoardHandler = async (req: Request, res: Response) => {
           lastLogin: user.lastLogin,
           schoolName: user.schoolName,
           phoneNumber: user.phoneNumber,
+          hashedToken: user.hashedToken,
+          tokenExpirationDate: user.tokenExpirationDate,
         },
         totalPoints: sum,
       });
@@ -266,6 +271,119 @@ const updateUserPasswordHandler = async (req: Request, res: Response) => {
   }
 };
 
+const forgotPasswordHandler = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body as { email: string };
+    if (!email.trim()) {
+      res.status(400).json({ success: false, message: "email is required" });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: email.trim().toLowerCase() },
+    });
+    if (!user) {
+      res
+        .status(400)
+        .json({ success: false, message: "user with email not found" });
+      return;
+    }
+
+    // generate a token
+    // hash the token and store in db for the current user with the expiration date
+    // send a reset url link with the token to the email
+    const token = crypto.randomBytes(20).toString("hex");
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    const resetPasswordUrl = `${process.env.CLIENT_URL}/reset-password/${token}`;
+    const tokenExpirationDateTime = Date.now() + 15 * (1000 * 60);
+
+    // save the hashed token and expiration date in the db for the particular user
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        hashedToken: hashedToken,
+        tokenExpirationDate: new Date(tokenExpirationDateTime),
+      },
+    });
+
+    // send reset password email with the resetUrlLink to the user's email
+    await sendResetPasswordMail(email.trim().toLowerCase(), resetPasswordUrl);
+    res.status(200).json({
+      success: true,
+      message: "forgot password email sent successfully",
+      email: email.trim().toLowerCase(),
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+const resetPasswordHandler = async (req: Request, res: Response) => {
+  try {
+    const { newPassword, token } = req.body as {
+      newPassword: string;
+      token: string;
+    };
+
+    // validate new password
+    if (!validatePassword(newPassword.trim())) {
+      res.status(400).json({ success: false, message: "weak password" });
+      return;
+    }
+
+    const newHashedToken = crypto
+      .createHash("sha256")
+      .update(token)
+      .digest("hex");
+    // check if user with the hashed token exists
+    const user = await prisma.user.findFirst({
+      where: { hashedToken: newHashedToken },
+    });
+    if (!user) {
+      res.status(400).json({ success: false, message: "invalid token" });
+      return;
+    }
+
+    const tokenExpirationDate = user.tokenExpirationDate;
+    if (!tokenExpirationDate) {
+      res.status(500).json({
+        success: false,
+        message: "reset password token expiration date error",
+      });
+      return;
+    }
+    const currentDate = new Date();
+
+    if (compareAsc(currentDate, tokenExpirationDate) === 1) {
+      res.status(400).json({ success: false, message: "link expired" });
+      return;
+    }
+    // compareAsc(currentDate,tokeExpirationDate) was 0 or -1 here i.e currentDate was the same or before the expiration date
+    // hash the new password and update it
+    const salt = await bcrypt.genSalt(10);
+    const newHashedPassword = await bcrypt.hash(newPassword.trim(), salt);
+    const newUser = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: newHashedPassword,
+        hashedToken: null,
+        tokenExpirationDate: null,
+      },
+    });
+    res
+      .status(200)
+      .json({ success: true, message: "password resetted succecsfully" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      success: false,
+      message: "internal server error",
+    });
+  }
+};
+
 const validatePassword = (password: string): boolean => {
   // password requirements
   // need to have atleast 6 characters
@@ -322,4 +440,6 @@ export {
   isUserPasswordCorrect,
   updateUserNameHandler,
   updateUserPasswordHandler,
+  forgotPasswordHandler,
+  resetPasswordHandler,
 };

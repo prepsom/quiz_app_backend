@@ -12,4 +12,6 @@ router.get("/leaderboard", auth_middleware_1.authenticateUser, user_controller_1
 router.post("/check-password", auth_middleware_1.authenticateUser, user_controller_1.isUserPasswordCorrect);
 router.put("/name", auth_middleware_1.authenticateUser, user_controller_1.updateUserNameHandler);
 router.put("/password", auth_middleware_1.authenticateUser, user_controller_1.updateUserPasswordHandler);
+router.post("/forgot-password", user_controller_1.forgotPasswordHandler);
+router.post("/reset-password", user_controller_1.resetPasswordHandler);
 exports.default = router;

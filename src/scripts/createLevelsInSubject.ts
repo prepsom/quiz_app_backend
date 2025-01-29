@@ -26,27 +26,22 @@ const createLevelsInSubject = async (subjectId: string) => {
       passingQuestions: number;
     }[] = [
       {
-        levelName: "Skin",
+        levelName: "Reflection of Light",
         levelDescription: "",
         passingQuestions: 6,
       },
       {
-        levelName: "Respiratory System",
+        levelName: "Propogation of Sound waves",
         levelDescription: "",
         passingQuestions: 6,
       },
       {
-        levelName: "Nutrition",
+        levelName: "Current Electricity",
         levelDescription: "",
         passingQuestions: 6,
       },
       {
-        levelName: "Digestive system",
-        levelDescription: "",
-        passingQuestions: 6,
-      },
-      {
-        levelName: "Skeleton",
+        levelName: "Magnetism",
         levelDescription: "",
         passingQuestions: 6,
       },

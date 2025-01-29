@@ -32,23 +32,25 @@ model Grade {
 }
 
 model User {
-  id                String              @id @default(uuid())
-  email             String              @unique
-  name              String?
-  password          String
-  role              Role                @default(STUDENT)
-  createdAt         DateTime            @default(now())
-  avatar            Avatar              @default(MALE)
-  schoolName        String?
-  phoneNumber       String?
+  id                  String              @id @default(uuid())
+  email               String              @unique
+  name                String?
+  password            String
+  role                Role                @default(STUDENT)
+  createdAt           DateTime            @default(now())
+  avatar              Avatar              @default(MALE)
+  schoolName          String?
+  phoneNumber         String?
   // Only for students
-  grade             Grade?              @relation("StudentGrade", fields: [gradeId], references: [id], onDelete: Cascade)
-  gradeId           String?
+  grade               Grade?              @relation("StudentGrade", fields: [gradeId], references: [id], onDelete: Cascade)
+  gradeId             String?
   // Only for teachers
-  teacherGrades     TeacherGrade[]
-  QuestionResponses QuestionResponse[]
-  UserLevelComplete UserLevelComplete[]
-  lastLogin         DateTime?
+  teacherGrades       TeacherGrade[]
+  QuestionResponses   QuestionResponse[]
+  UserLevelComplete   UserLevelComplete[]
+  lastLogin           DateTime?
+  hashedToken         String?
+  tokenExpirationDate DateTime?
 }
 
 // Junction table for Teacher-Grade many-to-many relationship
