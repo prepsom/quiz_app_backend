@@ -68,7 +68,6 @@ function parseQuestionsCsv(filePath: string) {
         currentQuestion = null;
         continue;
       }
-
       currentQuestion = {
         difficulty: row.Difficulty.toUpperCase() as Difficulty,
         questionType: mapQuestionType(row["Question Type"]),
@@ -77,6 +76,8 @@ function parseQuestionsCsv(filePath: string) {
         answer: row.Answer,
         isFirstRow: true,
       };
+
+      console.log(currentQuestion.answer);
 
       if (row.Options && row.Options !== "-") {
         if (currentQuestion.questionType === "MCQ") {
@@ -121,7 +122,9 @@ function processQuestion(
   switch (question.questionType) {
     case "MCQ":
       // Get the clean answer text without the letter prefix
+      console.log(question.answer);
       const correctAnswer = parseMCQOption(question.answer || "");
+      console.log(correctAnswer);
 
       // Ensure we have exactly 4 options
       if (options.length !== 4) {
@@ -170,6 +173,7 @@ function transformToExampleData(parsedQuestions: ParsedQuestion[]) {
       case "MCQ":
         // Ensure all MCQ requirements are met
         const mcqAnswers = q.options || [];
+        console.log(mcqAnswers);
         const hasCorrectNumberOfAnswers = mcqAnswers.length === 4;
         const hasOneCorrectAnswer =
           mcqAnswers.filter((a) => a.isCorrect).length === 1;

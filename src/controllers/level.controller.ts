@@ -10,6 +10,7 @@ type AddLevelRequestBody = {
 
 type UpdateLevelRequestBody = {
   newLevelName: string;
+  passingQuestions:number;
 };
 
 const addLevelHandler = async (req: Request, res: Response) => {
@@ -216,8 +217,13 @@ const deleteLevelHandler = async (req: Request, res: Response) => {
 const updateLevelHandler = async (req: Request, res: Response) => {
   try {
     const { levelId } = req.params as { levelId: string };
-    const { newLevelName } = req.body as UpdateLevelRequestBody;
+    const { newLevelName , passingQuestions } = req.body as UpdateLevelRequestBody;
     const userId = req.userId;
+
+    if(passingQuestions <= 0) {
+      res.status(400).json({success:false,message:"passing questions cannot be negative"})
+      return;
+    }
 
     // complete this update level handler
     const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -258,7 +264,7 @@ const updateLevelHandler = async (req: Request, res: Response) => {
 
     const updatedLevel = await prisma.level.update({
       where: { id: level.id },
-      data: { levelName: newLevelName.trim() },
+      data: { levelName: newLevelName.trim() , passingQuestions:passingQuestions},
     });
 
     res.status(200).json({

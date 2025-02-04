@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { prisma } from "..";
-import { Answer, Difficulty, QuestionType } from "@prisma/client";
+import { Answer, Difficulty, Question, QuestionType } from "@prisma/client";
 
 type BaseQuestionRequestBody = {
   difficulty: Difficulty;
@@ -45,6 +45,9 @@ const getQuestionsByLevelHandler = async (req: Request, res: Response) => {
   try {
     const { levelId } = req.params as { levelId: string };
     const userId = req.userId;
+    const {filterByReady,page,limit,searchByTitle,filterByDifficulty,filterByQuestionType} = req.query as {filterByReady:"true" | "false";searchByTitle:string;filterByDifficulty:"EASY" | "MEDIUM" | "HARD";filterByQuestionType:"MCQ" | "FILL_IN_BLANK" | "MATCHING";page:string;limit:string};
+
+    const isPagination = page!==undefined && limit!==undefined;
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
@@ -97,13 +100,86 @@ const getQuestionsByLevelHandler = async (req: Request, res: Response) => {
       }
     }
 
-    const questions = await prisma.question.findMany({
-      where: { levelId: level.id, ready: true },
-    });
-    res.status(200).json({
-      success: true,
-      questions,
-    });
+    // if the user is an admin or a teacher then they can see all questions else only ready questions
+    const isFilterBySearchTitle = searchByTitle!==undefined ? true : false;
+    const isFilterByDifficulty = filterByDifficulty!==undefined ? true : false;
+    const isFilterByQuestionType = filterByQuestionType!==undefined ? true : false;
+
+    type PaginationResponse = Response & {
+      totalPages:number;
+      page:number;
+      limit:number;
+    }
+
+    type Response = {
+      success:boolean;
+      questions:Question[];
+    }
+
+    let response:Response | PaginationResponse;
+    
+    let questions;
+    let totalQuestionsCount = await prisma.question.count({where:{levelId:level.id}});
+    // pagination first then filter
+    if(isPagination) {
+      const pageNum = parseInt(page) || 1;
+      const limitNum = parseInt(limit) || 10;
+      const skip = pageNum * limitNum - limitNum;
+      const totalPages = Math.ceil(totalQuestionsCount / limitNum)
+      questions = await prisma.question.findMany({
+        where:{levelId:level.id},
+        skip:skip,
+        take:limitNum,
+      });
+    } else {
+      questions = await prisma.question.findMany({
+        where:{levelId:level.id},
+      });
+    }
+
+    if(filterByReady!==undefined) {
+      // filter by ready -> "true" | "false" , if "true" then ready:true else ready:false
+      let ready:boolean = filterByReady==="true" ? true : false;
+      questions = questions.filter((question) => question.ready===ready);
+    } else {
+      // filter by ready = undefined then fetch all questions if user is admin or teacher else fetch only ready questions 
+      if(user.role==="STUDENT") {
+        questions = questions.filter((question) => question.ready===true);
+      }
+    }
+
+    if(isFilterBySearchTitle) {
+      questions = questions.filter((question) => question.questionTitle.trim().toLowerCase().includes(searchByTitle.trim().toLowerCase()));
+    }
+
+    if(isFilterByDifficulty) {
+      questions = questions.filter((question) => question.difficulty===filterByDifficulty);
+    }
+
+    if(isFilterByQuestionType) {
+      questions = questions.filter((question) => question.questionType===filterByQuestionType);
+    }
+
+    if(isPagination) {
+      const pageNum = parseInt(page) || 1;
+      const limitNum = parseInt(limit) || 10;
+      const skip = pageNum * limitNum - limitNum;
+      const totalPages = Math.ceil(totalQuestionsCount / limitNum);
+      response = {
+        success:true,
+        questions:questions,
+        totalPages:totalPages,
+        page:pageNum,
+        limit:limitNum
+      }
+    } else {
+      response = {
+        success:true,
+        questions:questions
+      }
+    }
+
+    res.status(200).json(response);
   } catch (error) {
     console.log(error);
     res.status(500).json({
@@ -526,7 +602,7 @@ const processMCQQuestion = (question: any, isStudent: boolean) => {
 
   return {
     ...question,
-    MCQAnswers: shuffleArray(answers),
+    MCQAnswers:shuffleArray(answers),
     BlankSegments: undefined,
     BlankAnswers: undefined,
     MatchingPairs: undefined,

@@ -28,22 +28,92 @@ const createLevelsInSubject = (subjectId) => __awaiter(void 0, void 0, void 0, f
         const highestPosition = highestLevel.length === 1 ? highestLevel[0].position : -1;
         const levelsData = [
             {
-                levelName: "Reflection of Light",
+                levelName: "Nutrition in Plants",
                 levelDescription: "",
                 passingQuestions: 6,
             },
             {
-                levelName: "Propogation of Sound waves",
+                levelName: "Nutrition in Animals",
                 levelDescription: "",
                 passingQuestions: 6,
             },
             {
-                levelName: "Current Electricity",
+                levelName: "Fibre to Fabric",
                 levelDescription: "",
                 passingQuestions: 6,
             },
             {
-                levelName: "Magnetism",
+                levelName: "Heat",
+                levelDescription: "",
+                passingQuestions: 6,
+            },
+            {
+                levelName: "Acids, Bases and Salts",
+                levelDescription: "",
+                passingQuestions: 6,
+            },
+            {
+                levelName: "Physical and Chemical Changes",
+                levelDescription: "",
+                passingQuestions: 6,
+            },
+            {
+                levelName: "Weather,Climate and Adaptation",
+                levelDescription: "",
+                passingQuestions: 6,
+            },
+            {
+                levelName: "Winds,Storms and Cyclones",
+                levelDescription: "",
+                passingQuestions: 6,
+            },
+            {
+                levelName: "Soil",
+                levelDescription: "",
+                passingQuestions: 6,
+            },
+            {
+                levelName: "Respiration in Organisms",
+                levelDescription: "",
+                passingQuestions: 6,
+            },
+            {
+                levelName: "Transportation in Animals,Plant",
+                levelDescription: "",
+                passingQuestions: 6,
+            },
+            {
+                levelName: "Reproduction in Plants",
+                levelDescription: "",
+                passingQuestions: 6,
+            },
+            {
+                levelName: "Motion and Time",
+                levelDescription: "",
+                passingQuestions: 6,
+            },
+            {
+                levelName: "Electric Current and its Effect",
+                levelDescription: "",
+                passingQuestions: 6,
+            },
+            {
+                levelName: "Light",
+                levelDescription: "",
+                passingQuestions: 6,
+            },
+            {
+                levelName: "Water a Precious Resource",
+                levelDescription: "",
+                passingQuestions: 6,
+            },
+            {
+                levelName: "Forests Our Lifeline",
+                levelDescription: "",
+                passingQuestions: 6,
+            },
+            {
+                levelName: "Wastewater Story",
                 levelDescription: "",
                 passingQuestions: 6,
             },

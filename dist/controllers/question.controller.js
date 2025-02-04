@@ -16,6 +16,8 @@ const getQuestionsByLevelHandler = (req, res) => __awaiter(void 0, void 0, void 
     try {
         const { levelId } = req.params;
         const userId = req.userId;
+        const { filterByReady, page, limit, searchByTitle, filterByDifficulty, filterByQuestionType } = req.query;
+        const isPagination = page !== undefined && limit !== undefined;
         const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
         if (!user) {
             res.status(400).json({
@@ -62,13 +64,70 @@ const getQuestionsByLevelHandler = (req, res) => __awaiter(void 0, void 0, void 
                 return;
             }
         }
-        const questions = yield __1.prisma.question.findMany({
-            where: { levelId: level.id, ready: true },
-        });
-        res.status(200).json({
-            success: true,
-            questions,
-        });
+        // if the user is an admin or a teacher then they can see all questions else only ready questions
+        const isFilterBySearchTitle = searchByTitle !== undefined ? true : false;
+        const isFilterByDifficulty = filterByDifficulty !== undefined ? true : false;
+        const isFilterByQuestionType = filterByQuestionType !== undefined ? true : false;
+        let response;
+        let questions;
+        let totalQuestionsCount = yield __1.prisma.question.count({ where: { levelId: level.id } });
+        // pagination first then filter
+        if (isPagination) {
+            const pageNum = parseInt(page) || 1;
+            const limitNum = parseInt(limit) || 10;
+            const skip = pageNum * limitNum - limitNum;
+            const totalPages = Math.ceil(totalQuestionsCount / limitNum);
+            questions = yield __1.prisma.question.findMany({
+                where: { levelId: level.id },
+                skip: skip,
+                take: limitNum,
+            });
+        }
+        else {
+            questions = yield __1.prisma.question.findMany({
+                where: { levelId: level.id },
+            });
+        }
+        if (filterByReady !== undefined) {
+            // filter by ready -> "true" | "false" , if "true" then ready:true else ready:false
+            let ready = filterByReady === "true" ? true : false;
+            questions = questions.filter((question) => question.ready === ready);
+        }
+        else {
+            // filter by ready = undefined then fetch all questions if user is admin or teacher else fetch only ready questions 
+            if (user.role === "STUDENT") {
+                questions = questions.filter((question) => question.ready === true);
+            }
+        }
+        if (isFilterBySearchTitle) {
+            questions = questions.filter((question) => question.questionTitle.trim().toLowerCase().includes(searchByTitle.trim().toLowerCase()));
+        }
+        if (isFilterByDifficulty) {
+            questions = questions.filter((question) => question.difficulty === filterByDifficulty);
+        }
+        if (isFilterByQuestionType) {
+            questions = questions.filter((question) => question.questionType === filterByQuestionType);
+        }
+        if (isPagination) {
+            const pageNum = parseInt(page) || 1;
+            const limitNum = parseInt(limit) || 10;
+            const skip = pageNum * limitNum - limitNum;
+            const totalPages = Math.ceil(totalQuestionsCount / limitNum);
+            response = {
+                success: true,
+                questions: questions,
+                totalPages: totalPages,
+                page: pageNum,
+                limit: limitNum
+            };
+        }
+        else {
+            response = {
+                success: true,
+                questions: questions
+            };
+        }
+        res.status(200).json(response);
     }
     catch (error) {
         console.log(error);

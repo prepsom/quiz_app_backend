@@ -57,4 +57,66 @@ const getSchoolBySchoolNameHandler = async (req: Request, res: Response) => {
   }
 };
 
-export { getSchoolNameByGradeHandler, getSchoolBySchoolNameHandler };
+const getSchoolsHandler = async (req: Request, res: Response) => {
+  try {
+    const schools = await prisma.school.findMany();
+    res.status(200).json({ success: true, schools });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, message: "internal server error" });
+  }
+};
+
+const getGradesBySchoolHandler = async (req: Request, res: Response) => {
+  try {
+    const { schoolId } = req.params as { schoolId: string };
+
+    const school = await prisma.school.findUnique({
+      where: { id: schoolId },
+      include: {
+        Grade: {
+          include: {
+            _count: { select: { students: true } },
+          },
+        },
+      },
+    });
+
+    if (!school) {
+      res.status(400).json({ success: false, message: "school not found" });
+      return;
+    }
+
+    const grades = school.Grade;
+
+    res.status(200).json({ success: true, grades: grades });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, message: "internal server error" });
+  }
+};
+
+const getSchoolByIdHandler = async (req: Request, res: Response) => {
+  try {
+    const { schoolId } = req.params as { schoolId: string };
+
+    const school = await prisma.school.findUnique({ where: { id: schoolId } });
+    if (!school) {
+      res.status(400).json({ success: false, message: "school not found" });
+      return;
+    }
+
+    res.status(200).json({ success: true, school });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, message: "internal server error" });
+  }
+};
+
+export {
+  getSchoolNameByGradeHandler,
+  getSchoolBySchoolNameHandler,
+  getSchoolsHandler,
+  getGradesBySchoolHandler,
+  getSchoolByIdHandler,
+};
