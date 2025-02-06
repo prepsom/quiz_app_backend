@@ -4,6 +4,8 @@ import {
   forgotPasswordHandler,
   getLeaderBoardHandler,
   getTotalPointsHandler,
+  getUserByIdHandler,
+  getUserTotalPointsHandler,
   isUserPasswordCorrect,
   resetPasswordHandler,
   updateUserNameHandler,
@@ -19,5 +21,7 @@ router.put("/name", authenticateUser, updateUserNameHandler);
 router.put("/password", authenticateUser, updateUserPasswordHandler);
 router.post("/forgot-password", forgotPasswordHandler);
 router.post("/reset-password", resetPasswordHandler);
+router.get("/:userId",authenticateUser,getUserByIdHandler);
+router.get("/:userId/total-points",authenticateUser,getUserTotalPointsHandler);
 
 export default router;

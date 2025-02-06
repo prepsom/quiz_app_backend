@@ -14,4 +14,6 @@ router.put("/name", auth_middleware_1.authenticateUser, user_controller_1.update
 router.put("/password", auth_middleware_1.authenticateUser, user_controller_1.updateUserPasswordHandler);
 router.post("/forgot-password", user_controller_1.forgotPasswordHandler);
 router.post("/reset-password", user_controller_1.resetPasswordHandler);
+router.get("/:userId", auth_middleware_1.authenticateUser, user_controller_1.getUserByIdHandler);
+router.get("/:userId/total-points", auth_middleware_1.authenticateUser, user_controller_1.getUserTotalPointsHandler);
 exports.default = router;

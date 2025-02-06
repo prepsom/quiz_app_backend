@@ -384,6 +384,129 @@ const resetPasswordHandler = async (req: Request, res: Response) => {
   }
 };
 
+
+const getUserByIdHandler = async (req:Request,res:Response) => {
+  try {
+    const {userId} = req.params as {userId:string};
+    const authenticatedUserId = req.userId;
+
+    const authenticatedUser = await prisma.user.findUnique({where:{id:authenticatedUserId}});
+    if(!authenticatedUser) {
+      res.status(400).json({success:false,message:"invalid user id"});
+      return;
+    }
+
+    // if the user that we are trying to get data of is not a student then return error
+
+    const user = await prisma.user.findUnique({where:{id:userId}});
+    if(!user) {
+      res.status(400).json({success:false,message:"invalid user id"});
+      return;
+    }
+
+    if(user.role==="TEACHER" || user.role==="ADMIN") {
+      res.status(400).json({success:false,message:"cannot get data of a teacher or admin"});
+      return;
+    }
+
+    // if a authenticated user is making a request to get another user's data then 
+    // the authenticated user is either an admin or the user itself or the teacher but the teacher should teach the grade the user is in 
+
+    if(authenticatedUser.role==="STUDENT" && authenticatedUser.id!==user.id) {
+      res.status(401).json({success:false,message:"unauthorized"});
+      return;
+    }
+
+
+    if(authenticatedUser.role==="TEACHER") {
+      const userGrade = user.gradeId;
+      const isAuthenticatedUserTeachingThisGrade = await prisma.teacherGrade.findFirst({where:{teacherId:authenticatedUser.id,gradeId:userGrade!}});
+      if(!isAuthenticatedUserTeachingThisGrade) {
+        res.status(401).json({success:false,message:"unauthorized"});
+        return;
+      }
+    }
+
+    // get user data and the levels completed by the user along with the totalPoints and strengths,weaknesses and recommendations
+    const userCompletedLevels = await prisma.userLevelComplete.findMany({where:{userId:user.id},include:{
+      level:{
+        include:{
+          subject:true,
+        }
+      }
+    }});
+
+    let userTotalPoints = 0;
+    for(const eachCompletedLevel of userCompletedLevels) {
+      userTotalPoints = userTotalPoints + eachCompletedLevel.totalPoints;
+    }
+
+    res.status(200).json({
+      success:true,
+      userData:user,
+      userCompletedLevels:userCompletedLevels,
+      totalPoints:userTotalPoints
+    });
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({success:false,message:"internal server error when getting user data"});
+  }
+}
+
+const getUserTotalPointsHandler = async (req:Request,res:Response) => {
+  try {
+        // get users total points
+    const {userId} = req.params as {userId:string};
+    const authenticatedUserId = req.userId;
+
+    const authenticatedUser = await prisma.user.findUnique({where:{id:authenticatedUserId}});
+    if(!authenticatedUser) {
+      res.status(400).json({success:false,message:"invalid user id"});
+      return;
+    }
+
+    const user = await prisma.user.findUnique({where:{id:userId}});
+    if(!user) {
+      res.status(400).json({success:false,message:"invalid user id"});
+      return;
+    }
+
+    // if the user is a student then it can only get its own total points 
+    if(authenticatedUser.role==="STUDENT" && authenticatedUser.id!==user.id) {
+      res.status(401).json({success:false,message:"unauthorized"});
+      return;
+    }
+
+    // if the user is a teacher then the teacher can get the user's total points if the teacher teaches the grade the user is in 
+    if(authenticatedUser.role==="TEACHER") {
+      const userGrade = user.gradeId;
+      const isAuthenticatedUserTeachingThisGrade = await prisma.teacherGrade.findFirst({where:{teacherId:authenticatedUser.id,gradeId:userGrade!}});
+      if(!isAuthenticatedUserTeachingThisGrade) {
+        res.status(401).json({success:false,message:"unauthorized"});
+        return;
+      }
+    }
+
+
+    // get the user's total points
+    let userTotalPoints = 0;
+    const completedLevels = await prisma.userLevelComplete.findMany({where:{userId:user.id}});
+
+    for(const completedLevel of completedLevels) {
+      userTotalPoints = userTotalPoints + completedLevel.totalPoints;
+    }
+
+
+    res.status(200).json({success:true,totalPoints:userTotalPoints});
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({success:false,message:"Internal server error"});    
+  }
+}
+
+
 const validatePassword = (password: string): boolean => {
   // password requirements
   // need to have atleast 6 characters
@@ -442,4 +565,6 @@ export {
   updateUserPasswordHandler,
   forgotPasswordHandler,
   resetPasswordHandler,
+  getUserByIdHandler,
+  getUserTotalPointsHandler,
 };

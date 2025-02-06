@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getSchoolBySchoolNameHandler = exports.getSchoolNameByGradeHandler = void 0;
+exports.getSchoolByIdHandler = exports.getGradesBySchoolHandler = exports.getSchoolsHandler = exports.getSchoolBySchoolNameHandler = exports.getSchoolNameByGradeHandler = void 0;
 const __1 = require("..");
 const getSchoolNameByGradeHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -63,3 +63,56 @@ const getSchoolBySchoolNameHandler = (req, res) => __awaiter(void 0, void 0, voi
     }
 });
 exports.getSchoolBySchoolNameHandler = getSchoolBySchoolNameHandler;
+const getSchoolsHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const schools = yield __1.prisma.school.findMany();
+        res.status(200).json({ success: true, schools });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({ success: false, message: "internal server error" });
+    }
+});
+exports.getSchoolsHandler = getSchoolsHandler;
+const getGradesBySchoolHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { schoolId } = req.params;
+        const school = yield __1.prisma.school.findUnique({
+            where: { id: schoolId },
+            include: {
+                Grade: {
+                    include: {
+                        _count: { select: { students: true } },
+                    },
+                },
+            },
+        });
+        if (!school) {
+            res.status(400).json({ success: false, message: "school not found" });
+            return;
+        }
+        const grades = school.Grade;
+        res.status(200).json({ success: true, grades: grades });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({ success: false, message: "internal server error" });
+    }
+});
+exports.getGradesBySchoolHandler = getGradesBySchoolHandler;
+const getSchoolByIdHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { schoolId } = req.params;
+        const school = yield __1.prisma.school.findUnique({ where: { id: schoolId } });
+        if (!school) {
+            res.status(400).json({ success: false, message: "school not found" });
+            return;
+        }
+        res.status(200).json({ success: true, school });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({ success: false, message: "internal server error" });
+    }
+});
+exports.getSchoolByIdHandler = getSchoolByIdHandler;

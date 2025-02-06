@@ -198,8 +198,12 @@ exports.deleteLevelHandler = deleteLevelHandler;
 const updateLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { levelId } = req.params;
-        const { newLevelName } = req.body;
+        const { newLevelName, passingQuestions } = req.body;
         const userId = req.userId;
+        if (passingQuestions <= 0) {
+            res.status(400).json({ success: false, message: "passing questions cannot be negative" });
+            return;
+        }
         // complete this update level handler
         const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
         if (!user || user.role === "STUDENT") {
@@ -235,7 +239,7 @@ const updateLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, funct
         }
         const updatedLevel = yield __1.prisma.level.update({
             where: { id: level.id },
-            data: { levelName: newLevelName.trim() },
+            data: { levelName: newLevelName.trim(), passingQuestions: passingQuestions },
         });
         res.status(200).json({
             success: true,
