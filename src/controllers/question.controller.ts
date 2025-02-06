@@ -105,7 +105,72 @@ const getQuestionsByLevelHandler = async (req: Request, res: Response) => {
     const isFilterByDifficulty = filterByDifficulty!==undefined ? true : false;
     const isFilterByQuestionType = filterByQuestionType!==undefined ? true : false;
 
+    type Response = {
+      success:boolean;
+      questions:Question[];
+    }
+
     type PaginationResponse = Response & {
+      totalPages:number;
+      page:number;
+      limit:number;
+    }
+
+    let response:Response | PaginationResponse;
+
+    let questions = await prisma.question.findMany({where:{levelId:level.id}});
+
+    if(isFilterBySearchTitle) {
+      questions = questions.filter((question) => question.questionTitle.trim().toLowerCase().includes(searchByTitle.trim().toLowerCase()))
+    }
+
+    if(isFilterByDifficulty) {
+      questions = questions.filter((question) => question.difficulty===filterByDifficulty);
+    }
+
+    if(isFilterByQuestionType) {
+      questions = questions.filter((question) => question.questionType===filterByQuestionType);
+    }
+
+    // questions are filtered , now we paginate if page and limit are defined 
+    if(isPagination) {
+      const pageNum = parseInt(page) || 1;
+      const limitNum = parseInt(limit) || 10;
+
+      const skip = pageNum * limitNum - limitNum;
+      const totalPages = Math.ceil(questions.length / limitNum);
+
+      questions = questions.slice(skip,skip + limitNum);
+
+      response = {
+        success:true,
+        questions:questions,
+        totalPages:totalPages,
+        page:pageNum,
+        limit:limitNum
+      } as PaginationResponse;
+    } else {
+
+      response = {
+        success:true,
+        questions:questions,
+      } as Response;
+    }
+
+    
+    res.status(200).json(response);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      success: false,
+      message: "internal server error when getting questions for a level",
+    });
+  }
+};
+
+/*
+
+type PaginationResponse = Response & {
       totalPages:number;
       page:number;
       limit:number;
@@ -179,15 +244,8 @@ const getQuestionsByLevelHandler = async (req: Request, res: Response) => {
       }
     }
 
-    res.status(200).json(response);
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({
-      success: false,
-      message: "internal server error when getting questions for a level",
-    });
-  }
-};
+
+*/
 
 const isMCQQuestion = (
   data: AddQuestionRequestBody

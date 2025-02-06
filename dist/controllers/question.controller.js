@@ -69,36 +69,7 @@ const getQuestionsByLevelHandler = (req, res) => __awaiter(void 0, void 0, void 
         const isFilterByDifficulty = filterByDifficulty !== undefined ? true : false;
         const isFilterByQuestionType = filterByQuestionType !== undefined ? true : false;
         let response;
-        let questions;
-        let totalQuestionsCount = yield __1.prisma.question.count({ where: { levelId: level.id } });
-        // pagination first then filter
-        if (isPagination) {
-            const pageNum = parseInt(page) || 1;
-            const limitNum = parseInt(limit) || 10;
-            const skip = pageNum * limitNum - limitNum;
-            const totalPages = Math.ceil(totalQuestionsCount / limitNum);
-            questions = yield __1.prisma.question.findMany({
-                where: { levelId: level.id },
-                skip: skip,
-                take: limitNum,
-            });
-        }
-        else {
-            questions = yield __1.prisma.question.findMany({
-                where: { levelId: level.id },
-            });
-        }
-        if (filterByReady !== undefined) {
-            // filter by ready -> "true" | "false" , if "true" then ready:true else ready:false
-            let ready = filterByReady === "true" ? true : false;
-            questions = questions.filter((question) => question.ready === ready);
-        }
-        else {
-            // filter by ready = undefined then fetch all questions if user is admin or teacher else fetch only ready questions 
-            if (user.role === "STUDENT") {
-                questions = questions.filter((question) => question.ready === true);
-            }
-        }
+        let questions = yield __1.prisma.question.findMany({ where: { levelId: level.id } });
         if (isFilterBySearchTitle) {
             questions = questions.filter((question) => question.questionTitle.trim().toLowerCase().includes(searchByTitle.trim().toLowerCase()));
         }
@@ -108,11 +79,13 @@ const getQuestionsByLevelHandler = (req, res) => __awaiter(void 0, void 0, void 
         if (isFilterByQuestionType) {
             questions = questions.filter((question) => question.questionType === filterByQuestionType);
         }
+        // questions are filtered , now we paginate if page and limit are defined 
         if (isPagination) {
             const pageNum = parseInt(page) || 1;
             const limitNum = parseInt(limit) || 10;
             const skip = pageNum * limitNum - limitNum;
-            const totalPages = Math.ceil(totalQuestionsCount / limitNum);
+            const totalPages = Math.ceil(questions.length / limitNum);
+            questions = questions.slice(skip, skip + limitNum);
             response = {
                 success: true,
                 questions: questions,
@@ -124,7 +97,7 @@ const getQuestionsByLevelHandler = (req, res) => __awaiter(void 0, void 0, void 
         else {
             response = {
                 success: true,
-                questions: questions
+                questions: questions,
             };
         }
         res.status(200).json(response);
@@ -138,6 +111,84 @@ const getQuestionsByLevelHandler = (req, res) => __awaiter(void 0, void 0, void 
     }
 });
 exports.getQuestionsByLevelHandler = getQuestionsByLevelHandler;
+/*
+
+type PaginationResponse = Response & {
+      totalPages:number;
+      page:number;
+      limit:number;
+    }
+
+    type Response = {
+      success:boolean;
+      questions:Question[];
+    }
+
+    let response:Response | PaginationResponse;
+    
+    let questions;
+    let totalQuestionsCount = await prisma.question.count({where:{levelId:level.id}});
+    // pagination first then filter
+    if(isPagination) {
+      const pageNum = parseInt(page) || 1;
+      const limitNum = parseInt(limit) || 10;
+      const skip = pageNum * limitNum - limitNum;
+      const totalPages = Math.ceil(totalQuestionsCount / limitNum)
+      questions = await prisma.question.findMany({
+        where:{levelId:level.id},
+        skip:skip,
+        take:limitNum,
+      });
+    } else {
+      questions = await prisma.question.findMany({
+        where:{levelId:level.id},
+      });
+    }
+
+    if(filterByReady!==undefined) {
+      // filter by ready -> "true" | "false" , if "true" then ready:true else ready:false
+      let ready:boolean = filterByReady==="true" ? true : false;
+      questions = questions.filter((question) => question.ready===ready);
+    } else {
+      // filter by ready = undefined then fetch all questions if user is admin or teacher else fetch only ready questions
+      if(user.role==="STUDENT") {
+        questions = questions.filter((question) => question.ready===true);
+      }
+    }
+
+    if(isFilterBySearchTitle) {
+      questions = questions.filter((question) => question.questionTitle.trim().toLowerCase().includes(searchByTitle.trim().toLowerCase()));
+    }
+
+    if(isFilterByDifficulty) {
+      questions = questions.filter((question) => question.difficulty===filterByDifficulty);
+    }
+
+    if(isFilterByQuestionType) {
+      questions = questions.filter((question) => question.questionType===filterByQuestionType);
+    }
+
+    if(isPagination) {
+      const pageNum = parseInt(page) || 1;
+      const limitNum = parseInt(limit) || 10;
+      const skip = pageNum * limitNum - limitNum;
+      const totalPages = Math.ceil(totalQuestionsCount / limitNum);
+      response = {
+        success:true,
+        questions:questions,
+        totalPages:totalPages,
+        page:pageNum,
+        limit:limitNum
+      }
+    } else {
+      response = {
+        success:true,
+        questions:questions
+      }
+    }
+
+
+*/
 const isMCQQuestion = (data) => {
     return data.questionType === "MCQ";
 };
