@@ -78,6 +78,7 @@ const getGradesBySchoolHandler = async (req: Request, res: Response) => {
           include: {
             _count: { select: { students: true } },
           },
+          orderBy:{grade:"asc"}
         },
       },
     });

@@ -84,6 +84,7 @@ const getGradesBySchoolHandler = (req, res) => __awaiter(void 0, void 0, void 0,
                     include: {
                         _count: { select: { students: true } },
                     },
+                    orderBy: { grade: "asc" }
                 },
             },
         });

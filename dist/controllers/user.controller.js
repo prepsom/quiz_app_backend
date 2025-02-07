@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getUserTotalPointsHandler = exports.getUserByIdHandler = exports.resetPasswordHandler = exports.forgotPasswordHandler = exports.updateUserPasswordHandler = exports.updateUserNameHandler = exports.isUserPasswordCorrect = exports.getLeaderBoardHandler = exports.getTotalPointsHandler = void 0;
+exports.getTeacherGradesHandler = exports.getUserTotalPointsHandler = exports.getUserByIdHandler = exports.resetPasswordHandler = exports.forgotPasswordHandler = exports.updateUserPasswordHandler = exports.updateUserNameHandler = exports.isUserPasswordCorrect = exports.getLeaderBoardHandler = exports.getTotalPointsHandler = void 0;
 const __1 = require("..");
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const crypto_1 = __importDefault(require("crypto"));
@@ -460,6 +460,46 @@ const getUserTotalPointsHandler = (req, res) => __awaiter(void 0, void 0, void 0
     }
 });
 exports.getUserTotalPointsHandler = getUserTotalPointsHandler;
+const getTeacherGradesHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        // the authenitcated user should be a teacher 
+        // get the grades the teacher teaches 
+        const userId = req.userId;
+        const teacher = yield __1.prisma.user.findUnique({ where: { id: userId } });
+        if (!teacher) {
+            res.status(400).json({ success: false, message: "invalid teacher id" });
+            return;
+        }
+        if (teacher.role === "STUDENT" || teacher.role === "ADMIN") {
+            res.status(400).json({ success: false, message: "unauthorized" });
+            return;
+        }
+        const teacherGrades = yield __1.prisma.teacherGrade.findMany({ where: { teacherId: teacher.id }, include: {
+                grade: {
+                    include: {
+                        _count: {
+                            select: {
+                                students: true,
+                            }
+                        }
+                    }
+                },
+            } });
+        const grades = teacherGrades.map((teacherGrade) => {
+            return {
+                gradeId: teacherGrade.gradeId,
+                grade: teacherGrade.grade.grade,
+                noOfStudents: teacherGrade.grade._count.students,
+            };
+        });
+        res.status(200).json({ success: true, grades });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({ success: false, message: "internal server error when getting teacher grades" });
+    }
+});
+exports.getTeacherGradesHandler = getTeacherGradesHandler;
 const validatePassword = (password) => {
     // password requirements
     // need to have atleast 6 characters
