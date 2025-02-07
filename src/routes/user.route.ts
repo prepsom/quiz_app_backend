@@ -3,6 +3,7 @@ import { authenticateUser } from "../middlewares/auth.middleware";
 import {
   forgotPasswordHandler,
   getLeaderBoardHandler,
+  getTeacherGradesHandler,
   getTotalPointsHandler,
   getUserByIdHandler,
   getUserTotalPointsHandler,
@@ -23,5 +24,7 @@ router.post("/forgot-password", forgotPasswordHandler);
 router.post("/reset-password", resetPasswordHandler);
 router.get("/:userId",authenticateUser,getUserByIdHandler);
 router.get("/:userId/total-points",authenticateUser,getUserTotalPointsHandler);
+router.get("/teacher/grades",authenticateUser,getTeacherGradesHandler);
+
 
 export default router;

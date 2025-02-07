@@ -506,6 +506,51 @@ const getUserTotalPointsHandler = async (req:Request,res:Response) => {
   }
 }
 
+const getTeacherGradesHandler = async (req:Request,res:Response) => {
+  try {
+        // the authenitcated user should be a teacher 
+    // get the grades the teacher teaches 
+    const userId = req.userId;
+
+    const teacher = await prisma.user.findUnique({where:{id:userId}});
+    if(!teacher) {
+      res.status(400).json({success:false,message:"invalid teacher id"});
+      return;
+    }
+
+    if(teacher.role==="STUDENT" || teacher.role==="ADMIN") {
+      res.status(400).json({success:false,message:"unauthorized"});
+      return;
+    }
+
+    const teacherGrades = await prisma.teacherGrade.findMany({where:{teacherId:teacher.id},include:{
+      grade:{
+        include:{
+          _count:{
+            select:{
+              students:true,
+            }
+          }
+        }
+      },
+    }});
+
+    const grades = teacherGrades.map((teacherGrade) => {
+      return {
+        gradeId:teacherGrade.gradeId,
+        grade:teacherGrade.grade.grade,
+        noOfStudents:teacherGrade.grade._count.students,
+      }
+    });
+
+    res.status(200).json({success:true,grades});
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({success:false,message:"internal server error when getting teacher grades"});    
+  }
+}
+
 
 const validatePassword = (password: string): boolean => {
   // password requirements
@@ -567,4 +612,5 @@ export {
   resetPasswordHandler,
   getUserByIdHandler,
   getUserTotalPointsHandler,
+  getTeacherGradesHandler,
 };
