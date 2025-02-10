@@ -554,7 +554,7 @@ const processMCQQuestion = (question, isStudent) => {
             questionId: answer.questionId,
         }));
     }
-    return Object.assign(Object.assign({}, question), { MCQAnswers: shuffleArray(answers), BlankSegments: undefined, BlankAnswers: undefined, MatchingPairs: undefined });
+    return Object.assign(Object.assign({}, question), { MCQAnswers: answers, BlankSegments: undefined, BlankAnswers: undefined, MatchingPairs: undefined });
 };
 const processFillInBlankQuestion = (question, isStudent) => {
     const result = Object.assign(Object.assign({}, question), { MCQAnswers: undefined, BlankSegments: question.BlankSegments, BlankAnswers: isStudent ? undefined : question.BlankAnswers, MatchingPairs: undefined });

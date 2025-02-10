@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt"
 import { prisma } from ".."
 
+const ALL_GRADES = [1,2,3,4,5,6,7,8,9,10,11,12];
 
 
 
@@ -60,6 +61,6 @@ createTeacherUser(process.argv[2],
     process.argv[4],
     process.argv[5] as "MALE" | "FEMALE",
     process.argv[6],
-    [8,9,10]
+    ALL_GRADES
 ).then(() => console.log('ADDED TEACHER')).catch((e) => console.log('FAILED TO ADD TEACHER:- ',e));
 

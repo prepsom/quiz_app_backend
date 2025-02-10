@@ -14,6 +14,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const __1 = require("..");
+const ALL_GRADES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 const createTeacherUser = (email, password, name, avatar, schoolName, grades) => __awaiter(void 0, void 0, void 0, function* () {
     // create a user with role teacher in grades for ex (8,9,10) of the school with name "schoolName"
     // 1. check if the user with email already exists
@@ -55,4 +56,4 @@ const createTeacherUser = (email, password, name, avatar, schoolName, grades) =>
         }
     });
 });
-createTeacherUser(process.argv[2], process.argv[3], process.argv[4], process.argv[5], process.argv[6], [8, 9, 10]).then(() => console.log('ADDED TEACHER')).catch((e) => console.log('FAILED TO ADD TEACHER:- ', e));
+createTeacherUser(process.argv[2], process.argv[3], process.argv[4], process.argv[5], process.argv[6], ALL_GRADES).then(() => console.log('ADDED TEACHER')).catch((e) => console.log('FAILED TO ADD TEACHER:- ', e));

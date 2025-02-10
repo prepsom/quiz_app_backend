@@ -660,7 +660,7 @@ const processMCQQuestion = (question: any, isStudent: boolean) => {
 
   return {
     ...question,
-    MCQAnswers:shuffleArray(answers),
+    MCQAnswers:answers,
     BlankSegments: undefined,
     BlankAnswers: undefined,
     MatchingPairs: undefined,
