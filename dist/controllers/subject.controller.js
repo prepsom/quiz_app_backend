@@ -135,6 +135,12 @@ const addSubjectByGradeHandler = (req, res) => __awaiter(void 0, void 0, void 0,
             }
         }
         const newSubject = yield __1.prisma.subject.create({ data: { subjectName: subjectName.trim(), gradeId: grade.id } });
+        yield __1.prisma.notification.create({
+            data: {
+                gradeId: newSubject.gradeId,
+                message: `${newSubject.subjectName} subject added!`
+            }
+        });
         res.status(201).json({
             "success": true,
             "subject": newSubject,

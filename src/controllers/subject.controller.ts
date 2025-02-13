@@ -147,6 +147,14 @@ const addSubjectByGradeHandler = async (req:Request,res:Response) => {
     }
 
     const newSubject = await prisma.subject.create({data:{subjectName:subjectName.trim(),gradeId:grade.id}});
+
+    await prisma.notification.create({
+        data:{
+            gradeId:newSubject.gradeId,
+            message:`${newSubject.subjectName} subject added!`
+        }
+    })
+
     res.status(201).json({
         "success":true,
         "subject":newSubject,

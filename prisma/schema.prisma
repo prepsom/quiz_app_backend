@@ -29,6 +29,7 @@ model Grade {
   Subjects     Subject[]
   school       School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   schoolId     String
+  Notifications Notification[]
 }
 
 model User {
@@ -52,6 +53,19 @@ model User {
   hashedToken         String?
   tokenExpirationDate DateTime?
 }
+
+model Notification {
+  id      String @id @default(uuid())
+  message String
+  grade   Grade  @relation(fields: [gradeId], references: [id])
+  gradeId String
+  createdAt DateTime @default(now())
+}
+
+// want to send notifications to students of a particular grade when
+// 1. any new subjects are added in grade
+// 2. any new levels are added in subject of a grade
+// 3. any questions added in level of a grade
 
 // Junction table for Teacher-Grade many-to-many relationship
 model TeacherGrade {

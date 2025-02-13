@@ -418,6 +418,14 @@ const addQuestionByLevelHandler = async (req: Request, res: Response) => {
         });
       }
 
+      // send notification to the students of grade about the question added in level
+      await prisma.notification.create({
+        data:{
+          gradeId:level.subject.gradeId,
+          message:`New Questions in level ${level.levelName} of subject ${level.subject.subjectName}`
+        }
+      });
+
       res.status(201).json({
         success: true,
         data: question,

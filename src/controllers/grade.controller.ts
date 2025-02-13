@@ -122,7 +122,85 @@ const getStudentsByGradeIdHandler = async (req:Request,res:Response) => {
     }
 }
 
+const getNotificationsHandler = async (req:Request,res:Response) => {
+    try {
+        const {gradeId} = req.params as {gradeId:string};
+        const userId = req.userId;
+        const {page,limit} = req.query as {page:string;limit:string};
+
+
+        const user = await prisma.user.findUnique({where:{id:userId}});
+        if(!user) {
+            res.status(400).json({
+                success:false,
+                message:"invalid user id"
+            });
+            return;
+        }
+    
+        const grade = await prisma.grade.findUnique({where:{id:gradeId}});
+        if(!grade) {
+            res.status(400).json({
+                success:false,
+                message:"grade not found"
+            });
+            return;
+        }
+
+        // check if user is part of this grade or a teacher for this grade 
+        if(user.role==="STUDENT" && user.gradeId!==grade.id) {
+            res.status(401).json({
+                success:false,
+                message:"user does not belong to this grade"
+            });
+            return;
+        }
+
+        if(user.role==="TEACHER") {
+            const teachesGrade = await prisma.teacherGrade.findFirst({where:{teacherId:user.id,gradeId:grade.id}});
+            if(!teachesGrade) {
+                res.status(401).json({
+                    success:false,
+                    message:"teacher cannot view notifications to this grade"
+                });
+                return;
+            }
+        }
+
+        const pageNum = parseInt(page) || 1;
+        const limitNum = parseInt(limit) || 10;
+
+        const skip = pageNum * limitNum - limitNum;
+
+        const notifications = await prisma.notification.findMany({
+            where:{
+                gradeId:grade.id,
+            },
+            orderBy:{createdAt:"desc"},
+            skip:skip,
+            take:limitNum,
+        });
+
+        const totalNotifications = await prisma.notification.count({
+            where:{gradeId:grade.id}
+        });
+        const totalPages = Math.ceil(totalNotifications / limitNum);
+
+        res.status(200).json({
+            success:true,
+            notifications,
+            totalPages,
+        });
+    
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({success:false,message:"internal server error"});        
+    }
+}
+
+
 export {
     getGradeByIdHandler,
     getStudentsByGradeIdHandler,
+    getNotificationsHandler,
 }

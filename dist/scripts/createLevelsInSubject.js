@@ -60,6 +60,13 @@ const createLevelsInSubject = (subjectId) => __awaiter(void 0, void 0, void 0, f
             return returnObject;
         });
         yield __1.prisma.level.createMany({ data: dbLevelsData });
+        // send notification that with no of levels added in subject
+        yield __1.prisma.notification.create({
+            data: {
+                gradeId: subject.gradeId,
+                message: `${dbLevelsData.length} levels added in ${subject.subjectName}`
+            }
+        });
         console.log(`LEVELS added in subject ${subject.subjectName}`);
     }
     catch (error) {

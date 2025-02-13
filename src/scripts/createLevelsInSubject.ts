@@ -74,6 +74,14 @@ const createLevelsInSubject = async (subjectId: string) => {
 
     await prisma.level.createMany({ data: dbLevelsData });
 
+    // send notification that with no of levels added in subject
+    await prisma.notification.create({
+      data:{
+        gradeId:subject.gradeId,
+        message:`${dbLevelsData.length} levels added in ${subject.subjectName}`
+      }
+    });
+
     console.log(`LEVELS added in subject ${subject.subjectName}`);
   } catch (error) {
     console.log(`failed to add levels in subject with id ${subjectId}`);

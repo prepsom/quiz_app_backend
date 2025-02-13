@@ -45,7 +45,9 @@ const validateReadyField = (requestData) => {
 };
 const createQuestionsInLevel = (levelId, csvPath) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const level = yield __1.prisma.level.findUnique({ where: { id: levelId } });
+        const level = yield __1.prisma.level.findUnique({ where: { id: levelId }, include: {
+                subject: true,
+            } });
         if (!level) {
             throw new Error(`Level with id ${levelId} not found`);
         }
@@ -141,6 +143,12 @@ const createQuestionsInLevel = (levelId, csvPath) => __awaiter(void 0, void 0, v
                     break;
             }
         }
+        yield __1.prisma.notification.create({
+            data: {
+                gradeId: level.subject.gradeId,
+                message: `${questionsData.length} questions added in level ${level.levelName}`
+            }
+        });
     }
     catch (error) {
         console.log(error);

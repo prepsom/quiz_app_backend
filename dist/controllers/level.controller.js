@@ -72,6 +72,13 @@ const addLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, function
                 passingQuestions: passingQuestions,
             },
         });
+        // send notification in grade that new level has been added
+        yield __1.prisma.notification.create({
+            data: {
+                gradeId: subject.gradeId,
+                message: `${newLevel.levelName} level has been added in ${subject.subjectName}!`
+            }
+        });
         res.status(201).json({
             success: true,
             message: "Level added successfully",
@@ -739,7 +746,7 @@ exports.getNextLevelHandler = getNextLevelHandler;
 const getAllCompletedLevelsByUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const COMPLETED_LEVELS_PER_PAGE = 10;
-        const { page, limit } = req.query;
+        const { page, limit, filterBySubjectId } = req.query;
         const userId = req.userId;
         const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
         if (!user) {
@@ -754,29 +761,69 @@ const getAllCompletedLevelsByUser = (req, res) => __awaiter(void 0, void 0, void
             ? parseInt(limit)
             : COMPLETED_LEVELS_PER_PAGE;
         const skip = pageNum * limitNum - limitNum;
-        console.log(page, limit);
-        // we have the logged in user id , get all levels that have been completed by this user
-        const completedLevelsByUser = yield __1.prisma.userLevelComplete.findMany({
-            where: { userId: user.id },
-            include: {
-                level: {
-                    include: {
-                        subject: true,
+        let completedLevelsByUser;
+        let totalCompletedLevelsByUserCount = 0;
+        let filterBySubject;
+        if (filterBySubjectId !== undefined) {
+            filterBySubject = yield __1.prisma.subject.findUnique({ where: {
+                    id: filterBySubjectId,
+                } });
+            if (!filterBySubject) {
+                res.status(400).json({
+                    success: false,
+                    message: "filter subject not found to filter completed levels by"
+                });
+                return;
+            }
+            completedLevelsByUser = yield __1.prisma.userLevelComplete.findMany({
+                where: {
+                    userId: user.id,
+                    level: { subjectId: filterBySubject.id }
+                },
+                include: {
+                    level: {
+                        include: {
+                            subject: true,
+                        }
+                    }
+                },
+                orderBy: {
+                    level: {
+                        position: "asc"
+                    }
+                }
+            });
+            totalCompletedLevelsByUserCount = completedLevelsByUser.length;
+            completedLevelsByUser = completedLevelsByUser.slice(skip, skip + limitNum);
+        }
+        else {
+            completedLevelsByUser = yield __1.prisma.userLevelComplete.findMany({
+                where: { userId: user.id },
+                include: {
+                    level: {
+                        include: {
+                            subject: true,
+                        },
                     },
                 },
-            },
-            orderBy: {
-                level: {
-                    position: "asc",
+                orderBy: {
+                    level: {
+                        position: "asc",
+                    },
                 },
-            },
-            skip: skip,
-            take: limitNum,
-        });
+                skip: skip,
+                take: limitNum,
+            });
+            totalCompletedLevelsByUserCount = yield __1.prisma.userLevelComplete.count({
+                where: {
+                    userId: user.id,
+                }
+            });
+        }
+        // we have the logged in user id , get all levels that have been completed by this user
         const completedLevelsWithScores = completedLevelsByUser.map((item) => {
             return Object.assign(Object.assign({}, item.level), { totalPoints: item.totalPoints, noOfCorrectQuestions: item.noOfCorrectQuestions, strengths: item.strengths, recommendations: item.recommendations, weaknesses: item.weaknesses });
         });
-        const totalCompletedLevelsByUserCount = yield __1.prisma.userLevelComplete.count({ where: { userId: user.id } });
         res.status(200).json({
             success: true,
             completedLevels: completedLevelsWithScores,

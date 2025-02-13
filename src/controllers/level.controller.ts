@@ -82,6 +82,14 @@ const addLevelHandler = async (req: Request, res: Response) => {
       },
     });
 
+    // send notification in grade that new level has been added
+    await prisma.notification.create({
+      data:{
+        gradeId:subject.gradeId,
+        message:`${newLevel.levelName} level has been added in ${subject.subjectName}!`
+      }
+    });
+
     res.status(201).json({
       success: true,
       message: "Level added successfully",
@@ -429,6 +437,7 @@ const getLevelQuestions = async (req: Request, res: Response) => {
     const allQuestions = await prisma.question.findMany({
       where: { levelId: level.id, ready: true },
     });
+
     const answeredQuestions = await prisma.question.findMany({
       where: {
         levelId: level.id,
@@ -870,7 +879,7 @@ const getNextLevelHandler = async (req: Request, res: Response) => {
 const getAllCompletedLevelsByUser = async (req: Request, res: Response) => {
   try {
     const COMPLETED_LEVELS_PER_PAGE = 10;
-    const { page, limit } = req.query as { page: string; limit: string };
+    const { page, limit,filterBySubjectId} = req.query as { page: string; limit: string;filterBySubjectId:string};
     const userId = req.userId;
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
@@ -889,26 +898,72 @@ const getAllCompletedLevelsByUser = async (req: Request, res: Response) => {
 
     const skip = pageNum * limitNum - limitNum;
 
-    console.log(page, limit);
+    let completedLevelsByUser;
+    let totalCompletedLevelsByUserCount:number = 0;
 
-    // we have the logged in user id , get all levels that have been completed by this user
-    const completedLevelsByUser = await prisma.userLevelComplete.findMany({
-      where: { userId: user.id },
-      include: {
-        level: {
-          include: {
-            subject: true,
+    let filterBySubject
+    if(filterBySubjectId!==undefined) {
+      filterBySubject = await prisma.subject.findUnique({where:{
+        id:filterBySubjectId,
+      }});
+      if(!filterBySubject)  {
+        res.status(400).json({
+          success:false,
+          message:"filter subject not found to filter completed levels by"
+        });
+        return;
+      }
+      
+      completedLevelsByUser = await prisma.userLevelComplete.findMany({
+        where:{
+          userId:user.id,
+          level:{subjectId:filterBySubject.id}
+        },
+        include:{
+          level:{
+            include:{
+              subject:true,
+            }
+          }
+        },
+        orderBy:{
+          level:{
+            position:"asc"
+          }
+        }
+      });
+
+      totalCompletedLevelsByUserCount = completedLevelsByUser.length;
+
+      completedLevelsByUser = completedLevelsByUser.slice(skip,skip + limitNum);
+    } else {
+      completedLevelsByUser = await prisma.userLevelComplete.findMany({
+        where: { userId: user.id},
+        include: {
+          level: {
+            include: {
+              subject: true,
+            },
           },
         },
-      },
-      orderBy: {
-        level: {
-          position: "asc",
+        orderBy: {
+          level: {
+            position: "asc",
+          },
         },
-      },
-      skip: skip,
-      take: limitNum,
-    });
+        skip: skip,
+        take: limitNum,
+      });
+
+      totalCompletedLevelsByUserCount = await prisma.userLevelComplete.count({
+        where:{
+          userId:user.id,
+        }
+      });
+    } 
+    // we have the logged in user id , get all levels that have been completed by this user
+
+
 
     const completedLevelsWithScores = completedLevelsByUser.map((item) => {
       return {
@@ -920,9 +975,6 @@ const getAllCompletedLevelsByUser = async (req: Request, res: Response) => {
         weaknesses: item.weaknesses,
       };
     });
-
-    const totalCompletedLevelsByUserCount =
-      await prisma.userLevelComplete.count({ where: { userId: user.id } });
 
     res.status(200).json({
       success: true,
@@ -944,7 +996,7 @@ const getAllCompletedLevelsByUserInSubject = async (
 ) => {
   try {
     const COMPLETED_LEVELS_PER_PAGE = 10;
-    const { limit, page } = req.query as { page: string; limit: string };
+    const { limit, page } = req.query as { page: string;limit:string};
     const { subjectId } = req.params as { subjectId: string };
     const userId = req.userId;
     const user = await prisma.user.findUnique({ where: { id: userId } });

@@ -36,6 +36,12 @@ const seedSubjectsInGrade = (gradeNumber, schoolName) => __awaiter(void 0, void 
                 };
             }),
         });
+        yield __1.prisma.notification.create({
+            data: {
+                gradeId: grade.id,
+                message: `${subjects.length} new subjects added!`
+            }
+        });
         console.log(`Subjects added in grade with id ${grade.id}`);
     }
     catch (error) {

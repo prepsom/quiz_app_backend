@@ -88,7 +88,9 @@ const validateReadyField = (requestData: AddQuestionRequestBody): boolean => {
 
 const createQuestionsInLevel = async (levelId: string, csvPath: string) => {
   try {
-    const level = await prisma.level.findUnique({ where: { id: levelId } });
+    const level = await prisma.level.findUnique({ where: { id: levelId } , include:{
+      subject:true,
+    }});
     if (!level) {
       throw new Error(`Level with id ${levelId} not found`);
     }
@@ -225,6 +227,12 @@ const createQuestionsInLevel = async (levelId: string, csvPath: string) => {
           break;
       }
     }
+    await prisma.notification.create({
+      data:{
+        gradeId:level.subject.gradeId,
+        message:`${questionsData.length} questions added in level ${level.levelName}`
+      }
+    })
   } catch (error) {
     console.log(error);
     throw new Error("Failed to add questions in level");

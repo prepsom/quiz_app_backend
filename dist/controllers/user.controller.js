@@ -363,6 +363,8 @@ const getUserByIdHandler = (req, res) => __awaiter(void 0, void 0, void 0, funct
     try {
         const { userId } = req.params;
         const authenticatedUserId = req.userId;
+        const { page, limit, filterBySubjectId } = req.query;
+        // filter completed levels of a user by subject ... 
         const authenticatedUser = yield __1.prisma.user.findUnique({ where: { id: authenticatedUserId } });
         if (!authenticatedUser) {
             res.status(400).json({ success: false, message: "invalid user id" });
@@ -392,23 +394,66 @@ const getUserByIdHandler = (req, res) => __awaiter(void 0, void 0, void 0, funct
                 return;
             }
         }
+        const pageNum = parseInt(page) || 1;
+        const limitNum = parseInt(limit) || 10;
+        const skip = pageNum * limitNum - limitNum;
+        let userCompletedLevels;
+        let totalLevels = 0;
         // get user data and the levels completed by the user along with the totalPoints and strengths,weaknesses and recommendations
-        const userCompletedLevels = yield __1.prisma.userLevelComplete.findMany({ where: { userId: user.id }, include: {
-                level: {
-                    include: {
-                        subject: true,
+        if (filterBySubjectId !== undefined) {
+            const filterSubject = yield __1.prisma.subject.findUnique({ where: { id: filterBySubjectId } });
+            if (!filterSubject) {
+                res.status(400).json({ success: false, message: "subject to filter completed levels by not found" });
+                return;
+            }
+            userCompletedLevels = yield __1.prisma.userLevelComplete.findMany({
+                where: {
+                    userId: user.id,
+                },
+                include: {
+                    level: {
+                        include: {
+                            subject: true,
+                        }
                     }
                 }
-            } });
+            });
+            userCompletedLevels = userCompletedLevels.filter((completedLevel) => completedLevel.level.subject.id === filterSubject.id);
+            // after filtered by subject
+            // paginate
+            totalLevels = userCompletedLevels.length;
+            userCompletedLevels = userCompletedLevels.slice(skip, skip + limitNum);
+        }
+        else {
+            userCompletedLevels = yield __1.prisma.userLevelComplete.findMany({ where: { userId: user.id }, include: {
+                    level: {
+                        include: {
+                            subject: true,
+                        }
+                    }
+                }, skip: skip, take: limitNum });
+            totalLevels = yield __1.prisma.userLevelComplete.count({
+                where: {
+                    userId: user.id,
+                }
+            });
+        }
+        const totalPages = Math.ceil(totalLevels / limitNum);
         let userTotalPoints = 0;
-        for (const eachCompletedLevel of userCompletedLevels) {
-            userTotalPoints = userTotalPoints + eachCompletedLevel.totalPoints;
+        let allCompletedLevels = yield __1.prisma.userLevelComplete.findMany({
+            where: {
+                userId: user.id
+            }
+        });
+        for (const completedLevel of allCompletedLevels) {
+            userTotalPoints = userTotalPoints + completedLevel.totalPoints;
         }
         res.status(200).json({
             success: true,
             userData: user,
             userCompletedLevels: userCompletedLevels,
-            totalPoints: userTotalPoints
+            totalPoints: userTotalPoints,
+            totalPages: totalPages,
         });
     }
     catch (error) {
