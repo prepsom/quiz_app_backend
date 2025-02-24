@@ -27,6 +27,7 @@ const questionResponse_route_1 = __importDefault(require("./routes/questionRespo
 const user_route_1 = __importDefault(require("./routes/user.route"));
 const school_route_1 = __importDefault(require("./routes/school.route"));
 const grade_route_1 = __importDefault(require("./routes/grade.route"));
+const notification_route_1 = __importDefault(require("./routes/notification.route"));
 const openai_1 = __importDefault(require("openai"));
 const https_1 = __importDefault(require("https"));
 const fs_1 = __importDefault(require("fs"));
@@ -60,6 +61,7 @@ app.use("/question-response", questionResponse_route_1.default);
 app.use("/user", user_route_1.default);
 app.use("/school", school_route_1.default);
 app.use("/grade", grade_route_1.default);
+app.use("/notification", notification_route_1.default);
 // Check if SSL certificates exist
 const sslEnabled = () => {
     try {

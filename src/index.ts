@@ -11,7 +11,8 @@ import answerRoutes from "./routes/answer.route";
 import questionResponseRoutes from "./routes/questionResponse.route";
 import userRoutes from "./routes/user.route";
 import schoolRoutes from "./routes/school.route";
-import gradeRoutes from "./routes/grade.route"
+import gradeRoutes from "./routes/grade.route";
+import notificationRoutes from "./routes/notification.route"
 import OpenAI from "openai";
 import https from "https";
 import fs from "fs";
@@ -52,6 +53,7 @@ app.use("/question-response", questionResponseRoutes);
 app.use("/user", userRoutes);
 app.use("/school", schoolRoutes);
 app.use("/grade",gradeRoutes);
+app.use("/notification",notificationRoutes);
 
 // Check if SSL certificates exist
 const sslEnabled = () => {

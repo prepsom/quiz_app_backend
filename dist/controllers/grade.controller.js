@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getNotificationsHandler = exports.getStudentsByGradeIdHandler = exports.getGradeByIdHandler = void 0;
+exports.getStudentsByGradeIdHandler = exports.getGradeByIdHandler = void 0;
 const __1 = require("..");
 const getGradeByIdHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -108,69 +108,3 @@ const getStudentsByGradeIdHandler = (req, res) => __awaiter(void 0, void 0, void
     }
 });
 exports.getStudentsByGradeIdHandler = getStudentsByGradeIdHandler;
-const getNotificationsHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        const { gradeId } = req.params;
-        const userId = req.userId;
-        const { page, limit } = req.query;
-        const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
-        if (!user) {
-            res.status(400).json({
-                success: false,
-                message: "invalid user id"
-            });
-            return;
-        }
-        const grade = yield __1.prisma.grade.findUnique({ where: { id: gradeId } });
-        if (!grade) {
-            res.status(400).json({
-                success: false,
-                message: "grade not found"
-            });
-            return;
-        }
-        // check if user is part of this grade or a teacher for this grade 
-        if (user.role === "STUDENT" && user.gradeId !== grade.id) {
-            res.status(401).json({
-                success: false,
-                message: "user does not belong to this grade"
-            });
-            return;
-        }
-        if (user.role === "TEACHER") {
-            const teachesGrade = yield __1.prisma.teacherGrade.findFirst({ where: { teacherId: user.id, gradeId: grade.id } });
-            if (!teachesGrade) {
-                res.status(401).json({
-                    success: false,
-                    message: "teacher cannot view notifications to this grade"
-                });
-                return;
-            }
-        }
-        const pageNum = parseInt(page) || 1;
-        const limitNum = parseInt(limit) || 10;
-        const skip = pageNum * limitNum - limitNum;
-        const notifications = yield __1.prisma.notification.findMany({
-            where: {
-                gradeId: grade.id,
-            },
-            orderBy: { createdAt: "desc" },
-            skip: skip,
-            take: limitNum,
-        });
-        const totalNotifications = yield __1.prisma.notification.count({
-            where: { gradeId: grade.id }
-        });
-        const totalPages = Math.ceil(totalNotifications / limitNum);
-        res.status(200).json({
-            success: true,
-            notifications,
-            totalPages,
-        });
-    }
-    catch (error) {
-        console.log(error);
-        res.status(500).json({ success: false, message: "internal server error" });
-    }
-});
-exports.getNotificationsHandler = getNotificationsHandler;
