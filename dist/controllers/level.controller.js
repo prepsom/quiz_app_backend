@@ -943,38 +943,19 @@ const getLevelsByIds = (req, res) => __awaiter(void 0, void 0, void 0, function*
                 subject: true,
             },
         });
-        // the grade these levels are in cannot be different
-        const levelGrades = levels.map((level) => level.subject.gradeId);
-        for (let i = 0; i < levelGrades.length - 1; i++) {
-            if (levelGrades[i] !== levelGrades[i + 1]) {
-                res.status(400).json({
-                    success: false,
-                    message: "levels don't belong to one grade",
-                });
-                return;
-            }
-        }
-        const levelGrade = levels[0].subject.gradeId;
-        if (user.role === "STUDENT" && user.gradeId !== levelGrade) {
-            res.status(400).json({
-                success: false,
-                message: "user not in grade of levels",
-            });
-            return;
+        let filteredLevels = [];
+        // get levels which are in the same grade as logged in user
+        if (user.role === "STUDENT") {
+            filteredLevels = levels.filter((level) => level.subject.gradeId === user.gradeId);
         }
         if (user.role === "TEACHER") {
-            const teachesGrade = yield __1.prisma.teacherGrade.findFirst({
-                where: { teacherId: user.id, gradeId: levelGrade },
+            const teachesGrades = yield __1.prisma.teacherGrade.findMany({
+                where: { teacherId: user.id },
             });
-            if (!teachesGrade) {
-                res.status(400).json({
-                    success: false,
-                    message: "teacher not in grade of levels",
-                });
-                return;
-            }
+            const validGrades = teachesGrades.map((t) => t.gradeId);
+            filteredLevels = levels.filter((level) => validGrades.includes(level.subject.gradeId));
         }
-        res.status(200).json({ success: true, levels });
+        res.status(200).json({ success: true, levels: filteredLevels });
     }
     catch (error) {
         console.log(error);
