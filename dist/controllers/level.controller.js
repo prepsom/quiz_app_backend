@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAllCompletedLevelsByUserInSubject = exports.getAllCompletedLevelsByUser = exports.getNextLevelHandler = exports.getCompletedLevelsBySubjectHandler = exports.completeLevelHandler = exports.getLevelById = exports.getLevelQuestions = exports.getLevelResultsHandler = exports.updateLevelHandler = exports.deleteLevelHandler = exports.getLevelsBySubjectHandler = exports.addLevelHandler = void 0;
+exports.getAllCompletedLevelsByUser = exports.getLevelsByIds = exports.getAllCompletedLevelsByUserInSubject = exports.getCompletedLevelsByUser = exports.getNextLevelHandler = exports.getCompletedLevelsBySubjectHandler = exports.completeLevelHandler = exports.getLevelById = exports.getLevelQuestions = exports.getLevelResultsHandler = exports.updateLevelHandler = exports.deleteLevelHandler = exports.getLevelsBySubjectHandler = exports.addLevelHandler = void 0;
 const __1 = require("..");
 const addLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     // who can add levels -> teachers
@@ -76,8 +76,8 @@ const addLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, function
         yield __1.prisma.notification.create({
             data: {
                 gradeId: subject.gradeId,
-                message: `${newLevel.levelName} level has been added in ${subject.subjectName}!`
-            }
+                message: `${newLevel.levelName} level has been added in ${subject.subjectName}!`,
+            },
         });
         res.status(201).json({
             success: true,
@@ -208,7 +208,10 @@ const updateLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, funct
         const { newLevelName, passingQuestions } = req.body;
         const userId = req.userId;
         if (passingQuestions <= 0) {
-            res.status(400).json({ success: false, message: "passing questions cannot be negative" });
+            res.status(400).json({
+                success: false,
+                message: "passing questions cannot be negative",
+            });
             return;
         }
         // complete this update level handler
@@ -246,7 +249,10 @@ const updateLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, funct
         }
         const updatedLevel = yield __1.prisma.level.update({
             where: { id: level.id },
-            data: { levelName: newLevelName.trim(), passingQuestions: passingQuestions },
+            data: {
+                levelName: newLevelName.trim(),
+                passingQuestions: passingQuestions,
+            },
         });
         res.status(200).json({
             success: true,
@@ -743,7 +749,7 @@ const getNextLevelHandler = (req, res) => __awaiter(void 0, void 0, void 0, func
     }
 });
 exports.getNextLevelHandler = getNextLevelHandler;
-const getAllCompletedLevelsByUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getCompletedLevelsByUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const COMPLETED_LEVELS_PER_PAGE = 10;
         const { page, limit, filterBySubjectId } = req.query;
@@ -765,33 +771,35 @@ const getAllCompletedLevelsByUser = (req, res) => __awaiter(void 0, void 0, void
         let totalCompletedLevelsByUserCount = 0;
         let filterBySubject;
         if (filterBySubjectId !== undefined) {
-            filterBySubject = yield __1.prisma.subject.findUnique({ where: {
+            filterBySubject = yield __1.prisma.subject.findUnique({
+                where: {
                     id: filterBySubjectId,
-                } });
+                },
+            });
             if (!filterBySubject) {
                 res.status(400).json({
                     success: false,
-                    message: "filter subject not found to filter completed levels by"
+                    message: "filter subject not found to filter completed levels by",
                 });
                 return;
             }
             completedLevelsByUser = yield __1.prisma.userLevelComplete.findMany({
                 where: {
                     userId: user.id,
-                    level: { subjectId: filterBySubject.id }
+                    level: { subjectId: filterBySubject.id },
                 },
                 include: {
                     level: {
                         include: {
                             subject: true,
-                        }
-                    }
+                        },
+                    },
                 },
                 orderBy: {
                     level: {
-                        position: "asc"
-                    }
-                }
+                        position: "asc",
+                    },
+                },
             });
             totalCompletedLevelsByUserCount = completedLevelsByUser.length;
             completedLevelsByUser = completedLevelsByUser.slice(skip, skip + limitNum);
@@ -817,7 +825,7 @@ const getAllCompletedLevelsByUser = (req, res) => __awaiter(void 0, void 0, void
             totalCompletedLevelsByUserCount = yield __1.prisma.userLevelComplete.count({
                 where: {
                     userId: user.id,
-                }
+                },
             });
         }
         // we have the logged in user id , get all levels that have been completed by this user
@@ -838,7 +846,7 @@ const getAllCompletedLevelsByUser = (req, res) => __awaiter(void 0, void 0, void
         });
     }
 });
-exports.getAllCompletedLevelsByUser = getAllCompletedLevelsByUser;
+exports.getCompletedLevelsByUser = getCompletedLevelsByUser;
 const getAllCompletedLevelsByUserInSubject = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const COMPLETED_LEVELS_PER_PAGE = 10;
@@ -915,3 +923,87 @@ const getAllCompletedLevelsByUserInSubject = (req, res) => __awaiter(void 0, voi
     }
 });
 exports.getAllCompletedLevelsByUserInSubject = getAllCompletedLevelsByUserInSubject;
+const getLevelsByIds = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { levelIds } = req.body;
+        const userId = req.userId;
+        const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            res.status(400).json({ success: false, message: "invalid user id" });
+            return;
+        }
+        // FETCH ALL LEVELS BY IDS
+        const levels = yield __1.prisma.level.findMany({
+            where: {
+                id: {
+                    in: levelIds,
+                },
+            },
+            include: {
+                subject: true,
+            },
+        });
+        // the grade these levels are in cannot be different
+        const levelGrades = levels.map((level) => level.subject.gradeId);
+        for (let i = 0; i < levelGrades.length - 1; i++) {
+            if (levelGrades[i] !== levelGrades[i + 1]) {
+                res.status(400).json({
+                    success: false,
+                    message: "levels don't belong to one grade",
+                });
+                return;
+            }
+        }
+        const levelGrade = levels[0].subject.gradeId;
+        if (user.role === "STUDENT" && user.gradeId !== levelGrade) {
+            res.status(400).json({
+                success: false,
+                message: "user not in grade of levels",
+            });
+            return;
+        }
+        if (user.role === "TEACHER") {
+            const teachesGrade = yield __1.prisma.teacherGrade.findFirst({
+                where: { teacherId: user.id, gradeId: levelGrade },
+            });
+            if (!teachesGrade) {
+                res.status(400).json({
+                    success: false,
+                    message: "teacher not in grade of levels",
+                });
+                return;
+            }
+        }
+        res.status(200).json({ success: true, levels });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({ success: false, message: "internal server error" });
+    }
+});
+exports.getLevelsByIds = getLevelsByIds;
+const getAllCompletedLevelsByUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const userId = req.userId;
+        const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            res.status(400).json({ success: false, message: "invalid user id" });
+            return;
+        }
+        const completedLevelsByUser = yield __1.prisma.userLevelComplete.findMany({
+            where: {
+                userId: user.id,
+            },
+            include: {
+                level: true,
+            },
+        });
+        const completedLevels = completedLevelsByUser.map((val) => val.level);
+        res.status(200).json({ success: true, completedLevels });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({ success: false, message: "internal server error" });
+    }
+});
+exports.getAllCompletedLevelsByUser = getAllCompletedLevelsByUser;

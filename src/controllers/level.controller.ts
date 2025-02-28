@@ -10,7 +10,7 @@ type AddLevelRequestBody = {
 
 type UpdateLevelRequestBody = {
   newLevelName: string;
-  passingQuestions:number;
+  passingQuestions: number;
 };
 
 const addLevelHandler = async (req: Request, res: Response) => {
@@ -84,10 +84,10 @@ const addLevelHandler = async (req: Request, res: Response) => {
 
     // send notification in grade that new level has been added
     await prisma.notification.create({
-      data:{
-        gradeId:subject.gradeId,
-        message:`${newLevel.levelName} level has been added in ${subject.subjectName}!`
-      }
+      data: {
+        gradeId: subject.gradeId,
+        message: `${newLevel.levelName} level has been added in ${subject.subjectName}!`,
+      },
     });
 
     res.status(201).json({
@@ -225,11 +225,15 @@ const deleteLevelHandler = async (req: Request, res: Response) => {
 const updateLevelHandler = async (req: Request, res: Response) => {
   try {
     const { levelId } = req.params as { levelId: string };
-    const { newLevelName , passingQuestions } = req.body as UpdateLevelRequestBody;
+    const { newLevelName, passingQuestions } =
+      req.body as UpdateLevelRequestBody;
     const userId = req.userId;
 
-    if(passingQuestions <= 0) {
-      res.status(400).json({success:false,message:"passing questions cannot be negative"})
+    if (passingQuestions <= 0) {
+      res.status(400).json({
+        success: false,
+        message: "passing questions cannot be negative",
+      });
       return;
     }
 
@@ -272,7 +276,10 @@ const updateLevelHandler = async (req: Request, res: Response) => {
 
     const updatedLevel = await prisma.level.update({
       where: { id: level.id },
-      data: { levelName: newLevelName.trim() , passingQuestions:passingQuestions},
+      data: {
+        levelName: newLevelName.trim(),
+        passingQuestions: passingQuestions,
+      },
     });
 
     res.status(200).json({
@@ -876,10 +883,14 @@ const getNextLevelHandler = async (req: Request, res: Response) => {
   }
 };
 
-const getAllCompletedLevelsByUser = async (req: Request, res: Response) => {
+const getCompletedLevelsByUser = async (req: Request, res: Response) => {
   try {
     const COMPLETED_LEVELS_PER_PAGE = 10;
-    const { page, limit,filterBySubjectId} = req.query as { page: string; limit: string;filterBySubjectId:string};
+    const { page, limit, filterBySubjectId } = req.query as {
+      page: string;
+      limit: string;
+      filterBySubjectId: string;
+    };
     const userId = req.userId;
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
@@ -899,46 +910,51 @@ const getAllCompletedLevelsByUser = async (req: Request, res: Response) => {
     const skip = pageNum * limitNum - limitNum;
 
     let completedLevelsByUser;
-    let totalCompletedLevelsByUserCount:number = 0;
+    let totalCompletedLevelsByUserCount: number = 0;
 
-    let filterBySubject
-    if(filterBySubjectId!==undefined) {
-      filterBySubject = await prisma.subject.findUnique({where:{
-        id:filterBySubjectId,
-      }});
-      if(!filterBySubject)  {
+    let filterBySubject;
+    if (filterBySubjectId !== undefined) {
+      filterBySubject = await prisma.subject.findUnique({
+        where: {
+          id: filterBySubjectId,
+        },
+      });
+      if (!filterBySubject) {
         res.status(400).json({
-          success:false,
-          message:"filter subject not found to filter completed levels by"
+          success: false,
+          message: "filter subject not found to filter completed levels by",
         });
         return;
       }
-      
+
       completedLevelsByUser = await prisma.userLevelComplete.findMany({
-        where:{
-          userId:user.id,
-          level:{subjectId:filterBySubject.id}
+        where: {
+          userId: user.id,
+          level: { subjectId: filterBySubject.id },
         },
-        include:{
-          level:{
-            include:{
-              subject:true,
-            }
-          }
+        include: {
+          level: {
+            include: {
+              subject: true,
+            },
+          },
         },
-        orderBy:{
-          level:{
-            position:"asc"
-          }
-        }
+        orderBy: {
+          level: {
+            position: "asc",
+          },
+        },
       });
 
       totalCompletedLevelsByUserCount = completedLevelsByUser.length;
 
-      completedLevelsByUser = completedLevelsByUser.slice(skip,skip + limitNum);
+      completedLevelsByUser = completedLevelsByUser.slice(
+        skip,
+        skip + limitNum
+      );
     } else {
       completedLevelsByUser = await prisma.userLevelComplete.findMany({
-        where: { userId: user.id},
+        where: { userId: user.id },
         include: {
           level: {
             include: {
@@ -956,14 +972,12 @@ const getAllCompletedLevelsByUser = async (req: Request, res: Response) => {
       });
 
       totalCompletedLevelsByUserCount = await prisma.userLevelComplete.count({
-        where:{
-          userId:user.id,
-        }
+        where: {
+          userId: user.id,
+        },
       });
-    } 
+    }
     // we have the logged in user id , get all levels that have been completed by this user
-
-
 
     const completedLevelsWithScores = completedLevelsByUser.map((item) => {
       return {
@@ -996,7 +1010,7 @@ const getAllCompletedLevelsByUserInSubject = async (
 ) => {
   try {
     const COMPLETED_LEVELS_PER_PAGE = 10;
-    const { limit, page } = req.query as { page: string;limit:string};
+    const { limit, page } = req.query as { page: string; limit: string };
     const { subjectId } = req.params as { subjectId: string };
     const userId = req.userId;
     const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -1086,6 +1100,97 @@ const getAllCompletedLevelsByUserInSubject = async (
   }
 };
 
+const getLevelsByIds = async (req: Request, res: Response) => {
+  try {
+    const { levelIds } = req.body as { levelIds: string[] };
+    const userId = req.userId;
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      res.status(400).json({ success: false, message: "invalid user id" });
+      return;
+    }
+
+    // FETCH ALL LEVELS BY IDS
+    const levels = await prisma.level.findMany({
+      where: {
+        id: {
+          in: levelIds,
+        },
+      },
+      include: {
+        subject: true,
+      },
+    });
+
+    // the grade these levels are in cannot be different
+    const levelGrades = levels.map((level) => level.subject.gradeId);
+    for (let i = 0; i < levelGrades.length - 1; i++) {
+      if (levelGrades[i] !== levelGrades[i + 1]) {
+        res.status(400).json({
+          success: false,
+          message: "levels don't belong to one grade",
+        });
+        return;
+      }
+    }
+
+    const levelGrade = levels[0].subject.gradeId;
+    if (user.role === "STUDENT" && user.gradeId !== levelGrade) {
+      res.status(400).json({
+        success: false,
+        message: "user not in grade of levels",
+      });
+      return;
+    }
+
+    if (user.role === "TEACHER") {
+      const teachesGrade = await prisma.teacherGrade.findFirst({
+        where: { teacherId: user.id, gradeId: levelGrade },
+      });
+      if (!teachesGrade) {
+        res.status(400).json({
+          success: false,
+          message: "teacher not in grade of levels",
+        });
+        return;
+      }
+    }
+
+    res.status(200).json({ success: true, levels });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, message: "internal server error" });
+  }
+};
+
+const getAllCompletedLevelsByUser = async (req: Request, res: Response) => {
+  try {
+    const userId = req.userId;
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      res.status(400).json({ success: false, message: "invalid user id" });
+      return;
+    }
+
+    const completedLevelsByUser = await prisma.userLevelComplete.findMany({
+      where: {
+        userId: user.id,
+      },
+      include: {
+        level: true,
+      },
+    });
+
+    const completedLevels = completedLevelsByUser.map((val) => val.level);
+    res.status(200).json({ success: true, completedLevels });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, message: "internal server error" });
+  }
+};
+
 export {
   addLevelHandler,
   getLevelsBySubjectHandler,
@@ -1097,6 +1202,8 @@ export {
   completeLevelHandler,
   getCompletedLevelsBySubjectHandler,
   getNextLevelHandler,
-  getAllCompletedLevelsByUser,
+  getCompletedLevelsByUser,
   getAllCompletedLevelsByUserInSubject,
+  getLevelsByIds,
+  getAllCompletedLevelsByUser,
 };

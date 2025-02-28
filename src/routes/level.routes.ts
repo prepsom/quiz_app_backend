@@ -7,9 +7,11 @@ import {
   getAllCompletedLevelsByUser,
   getAllCompletedLevelsByUserInSubject,
   getCompletedLevelsBySubjectHandler,
+  getCompletedLevelsByUser,
   getLevelById,
   getLevelQuestions,
   getLevelResultsHandler,
+  getLevelsByIds,
   getLevelsBySubjectHandler,
   getNextLevelHandler,
   updateLevelHandler,
@@ -17,11 +19,16 @@ import {
 
 const router = express.Router();
 
+router.get(
+  "/levels/completed-all",
+  authenticateUser,
+  getAllCompletedLevelsByUser
+);
 router.get("/:levelId/questions", authenticateUser, getLevelQuestions);
 router.get("/next-level/:levelId", authenticateUser, getNextLevelHandler);
 router.post("/", authenticateUser, addLevelHandler);
 router.post("/:levelId/complete", authenticateUser, completeLevelHandler);
-router.get("/levels/completed", authenticateUser, getAllCompletedLevelsByUser);
+router.get("/levels/completed", authenticateUser, getCompletedLevelsByUser);
 router.get(
   "/levels-with-metadata/:subjectId/completed",
   authenticateUser,
@@ -37,5 +44,6 @@ router.get("/:levelId", getLevelById);
 router.delete("/:levelId", authenticateUser, deleteLevelHandler);
 router.put("/:levelId", authenticateUser, updateLevelHandler);
 router.get("/:levelId/results", authenticateUser, getLevelResultsHandler);
+router.post("/levels", authenticateUser, getLevelsByIds);
 
 export default router;
