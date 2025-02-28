@@ -16,14 +16,14 @@ exports.authenticateUser = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const authenticateUser = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b;
-    // user logs in -> cookie -> token 
-    // logged in user tries to access -> sends cookies -> 
+    // user logs in -> cookie -> token
+    // logged in user tries to access -> sends cookies ->
     // middleware checks for cookies
-    // verifys the auth_token with jwt_Secret and extracts payload 
+    // verifys the auth_token with jwt_Secret and extracts payload
     if (!((_a = req.cookies) === null || _a === void 0 ? void 0 : _a.auth_token)) {
         res.status(401).json({
-            "success": false,
-            "message": "user not authenticated",
+            success: false,
+            message: "user not authenticated",
         });
         return;
     }

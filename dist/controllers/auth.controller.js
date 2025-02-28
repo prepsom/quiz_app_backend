@@ -53,7 +53,7 @@ const loginHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* (
         // email and password are correct
         // create token with userId and JWT_SECRET
         const token = jsonwebtoken_1.default.sign({ userId: user.id }, process.env.JWT_SECRET, {
-            expiresIn: "2d",
+            expiresIn: "30d",
         });
         // user has logged in -> update last login
         yield __1.prisma.user.update({
@@ -68,7 +68,7 @@ const loginHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* (
             path: "/",
             secure: process.env.NODE_ENV === "production",
             sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-            maxAge: 1000 * 60 * 60 * 48,
+            maxAge: 1000 * 60 * 60 * 24 * 30,
         })
             .status(200)
             .json({
@@ -136,7 +136,7 @@ const registerUserHandler = (req, res) => __awaiter(void 0, void 0, void 0, func
             },
         });
         const token = jsonwebtoken_1.default.sign({ userId: newUser.id }, process.env.JWT_SECRET, {
-            expiresIn: "2d",
+            expiresIn: "30d",
         });
         res
             .cookie("auth_token", token, {
@@ -144,7 +144,7 @@ const registerUserHandler = (req, res) => __awaiter(void 0, void 0, void 0, func
             path: "/",
             secure: process.env.NODE_ENV === "production",
             sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-            maxAge: 1000 * 60 * 60 * 48,
+            maxAge: 1000 * 60 * 60 * 24 * 30,
         })
             .json({
             success: true,

@@ -64,7 +64,7 @@ const loginHandler = async (req: Request, res: Response) => {
       { userId: user.id },
       process.env.JWT_SECRET as string,
       {
-        expiresIn: "2d",
+        expiresIn: "30d",
       }
     );
 
@@ -82,7 +82,7 @@ const loginHandler = async (req: Request, res: Response) => {
         path: "/",
         secure: process.env.NODE_ENV === "production",
         sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-        maxAge: 1000 * 60 * 60 * 48,
+        maxAge: 1000 * 60 * 60 * 24 * 30,
       })
       .status(200)
       .json({
@@ -160,7 +160,7 @@ const registerUserHandler = async (req: Request, res: Response) => {
       { userId: newUser.id },
       process.env.JWT_SECRET as string,
       {
-        expiresIn: "2d",
+        expiresIn: "30d",
       }
     );
     res
@@ -169,7 +169,7 @@ const registerUserHandler = async (req: Request, res: Response) => {
         path: "/",
         secure: process.env.NODE_ENV === "production",
         sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-        maxAge: 1000 * 60 * 60 * 48,
+        maxAge: 1000 * 60 * 60 * 24 * 30,
       })
       .json({
         success: true,
