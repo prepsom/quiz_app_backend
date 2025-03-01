@@ -13,7 +13,7 @@ exports.getSubjectById = exports.updateSubjectHandler = exports.deleteSubjectHan
 const __1 = require("..");
 const getSubjectsByGradeHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     // get auth userid from middleware
-    // get user with the grade he/she is in 
+    // get user with the grade he/she is in
     // once we have the grade , we fetch for the subjects by the grade
     // return subjects
     try {
@@ -21,24 +21,24 @@ const getSubjectsByGradeHandler = (req, res) => __awaiter(void 0, void 0, void 0
         const userId = req.userId;
         if (!userId) {
             res.status(401).json({
-                "success": false,
-                "message": 'authenticated user id not found'
+                success: false,
+                message: "authenticated user id not found",
             });
             return;
         }
         const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
         if (!user) {
             res.status(400).json({
-                "success": false,
-                "message": "invalid user id"
+                success: false,
+                message: "invalid user id",
             });
             return;
         }
         const grade = yield __1.prisma.grade.findUnique({ where: { id: gradeId } });
         if (!grade) {
             res.status(400).json({
-                "success": false,
-                "message": "invalid grade id"
+                success: false,
+                message: "invalid grade id",
             });
             return;
         }
@@ -48,61 +48,66 @@ const getSubjectsByGradeHandler = (req, res) => __awaiter(void 0, void 0, void 0
         if (user.role === "STUDENT") {
             if (user.gradeId !== grade.id) {
                 res.status(401).json({
-                    "success": false,
-                    "message": "user unauthorized to get subjects under this grade"
+                    success: false,
+                    message: "user unauthorized to get subjects under this grade",
                 });
                 return;
             }
         }
         if (user.role === "TEACHER") {
-            const teachesGrade = yield __1.prisma.teacherGrade.findFirst({ where: { teacherId: user.id, gradeId: grade.id } });
+            const teachesGrade = yield __1.prisma.teacherGrade.findFirst({
+                where: { teacherId: user.id, gradeId: grade.id },
+            });
             if (!teachesGrade) {
                 res.status(401).json({
-                    "success": false,
-                    "message": "teacher unauthorized to get subjects under this grade"
+                    success: false,
+                    message: "teacher unauthorized to get subjects under this grade",
                 });
                 return;
             }
         }
-        const subjects = yield __1.prisma.subject.findMany({ where: { gradeId: grade.id } });
+        const subjects = yield __1.prisma.subject.findMany({
+            where: { gradeId: grade.id },
+            orderBy: { position: "asc" },
+        });
         res.status(200).json({
-            "success": true,
+            success: true,
             subjects,
         });
     }
     catch (error) {
         console.log(error);
         res.status(500).json({
-            "success": false,
-            "message": "Internal server error when getting subjects"
+            success: false,
+            message: "Internal server error when getting subjects",
         });
     }
 });
 exports.getSubjectsByGradeHandler = getSubjectsByGradeHandler;
 const addSubjectByGradeHandler = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        // get userId from req (added by middleware) to get the auth user id 
+        // get userId from req (added by middleware) to get the auth user id
         const userId = req.userId;
         if (!userId) {
             res.status(401).json({
-                "success": false,
-                "message": 'authenticated user id not found'
+                success: false,
+                message: "authenticated user id not found",
             });
             return;
         }
         const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
         if (!user) {
             res.status(400).json({
-                "success": false,
-                "message": "invalid user id"
+                success: false,
+                message: "invalid user id",
             });
             return;
         }
         // check role of the user - either ADMIN OR TEACHER
         if (user.role === "STUDENT") {
             res.status(401).json({
-                "success": false,
-                "message": "user not authorized to create a subject"
+                success: false,
+                message: "user not authorized to create a subject",
             });
             return;
         }
@@ -110,45 +115,65 @@ const addSubjectByGradeHandler = (req, res) => __awaiter(void 0, void 0, void 0,
         const { gradeId, subjectName } = req.body;
         if (subjectName.trim() === "") {
             res.status(400).json({
-                "success": false,
-                "message": "subject name cannot be empty"
+                success: false,
+                message: "subject name cannot be empty",
             });
             return;
         }
         const grade = yield __1.prisma.grade.findUnique({ where: { id: gradeId } });
         if (!grade) {
             res.status(404).json({
-                "success": false,
-                "message": "grade not found"
+                success: false,
+                message: "grade not found",
             });
             return;
         }
         // check if role===TEACHER that teacher teaches this grade , if he/she doesn't then can't add subject in this grade
         if (user.role === "TEACHER") {
-            const teacherGrade = yield __1.prisma.teacherGrade.findFirst({ where: { teacherId: user.id, gradeId: grade.id } });
+            const teacherGrade = yield __1.prisma.teacherGrade.findFirst({
+                where: { teacherId: user.id, gradeId: grade.id },
+            });
             if (!teacherGrade) {
                 res.status(401).json({
-                    "success": false,
-                    "message": "teacher doesn't teach this grade. unauthorized to add a subject"
+                    success: false,
+                    message: "teacher doesn't teach this grade. unauthorized to add a subject",
                 });
                 return;
             }
         }
-        const newSubject = yield __1.prisma.subject.create({ data: { subjectName: subjectName.trim(), gradeId: grade.id } });
+        // when creating a new subject .... the position of the subject has to be the current highest position of a subject in db + 1
+        const currentSubjectWithHighestPosition = yield __1.prisma.subject.findFirst({
+            where: {},
+            orderBy: { position: "desc" },
+            take: 1,
+        });
+        const currentPosition = currentSubjectWithHighestPosition
+            ? currentSubjectWithHighestPosition.position + 1
+            : 0;
+        const newSubject = yield __1.prisma.subject.create({
+            data: {
+                subjectName: subjectName.trim(),
+                gradeId: grade.id,
+                position: currentPosition,
+            },
+        });
         yield __1.prisma.notification.create({
             data: {
                 gradeId: newSubject.gradeId,
-                message: `${newSubject.subjectName} subject added!`
-            }
+                message: `${newSubject.subjectName} subject added!`,
+            },
         });
         res.status(201).json({
-            "success": true,
-            "subject": newSubject,
+            success: true,
+            subject: newSubject,
         });
     }
     catch (error) {
         console.log(error);
-        res.status(500).json({ "success": false, "message": "internal server error when adding subject" });
+        res.status(500).json({
+            success: false,
+            message: "internal server error when adding subject",
+        });
     }
 });
 exports.addSubjectByGradeHandler = addSubjectByGradeHandler;
@@ -158,50 +183,54 @@ const deleteSubjectHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
         const userId = req.userId;
         if (!userId) {
             res.status(401).json({
-                "success": false,
-                "message": 'authenticated user id not found'
+                success: false,
+                message: "authenticated user id not found",
             });
             return;
         }
         const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
         if (!user) {
             res.status(400).json({
-                "success": false,
-                "message": "invalid user id"
+                success: false,
+                message: "invalid user id",
             });
             return;
         }
         if (user.role === "STUDENT") {
             res.status(401).json({
-                "success": false,
-                "message": "user not authorized to delete subjects"
+                success: false,
+                message: "user not authorized to delete subjects",
             });
             return;
         }
         // if role == teacher then if teacher teaches the grade that this subject is in then its ok for the teacher to delete the subject
-        const subject = yield __1.prisma.subject.findUnique({ where: { id: subjectId } });
+        const subject = yield __1.prisma.subject.findUnique({
+            where: { id: subjectId },
+        });
         if (!subject) {
             res.status(400).json({
-                "success": false,
-                "message": "subject not found"
+                success: false,
+                message: "subject not found",
             });
             return;
         }
         if (user.role === "TEACHER") {
             const subjectGradeId = subject.gradeId;
-            const teachesGrade = yield __1.prisma.teacherGrade.findFirst({ where: { teacherId: user.id, gradeId: subjectGradeId } });
+            const teachesGrade = yield __1.prisma.teacherGrade.findFirst({
+                where: { teacherId: user.id, gradeId: subjectGradeId },
+            });
             if (!teachesGrade) {
                 res.status(401).json({
-                    "success": false,
-                    "message": "teacher doesn't teach this grade. unauthorized to delete a subject"
+                    success: false,
+                    message: "teacher doesn't teach this grade. unauthorized to delete a subject",
                 });
                 return;
             }
         }
         yield __1.prisma.subject.delete({ where: { id: subject.id } });
         res.status(200).json({
-            "success": true,
-            "message": "subject deleted successfully"
+            success: true,
+            message: "subject deleted successfully",
         });
     }
     catch (error) {
@@ -216,65 +245,72 @@ const updateSubjectHandler = (req, res) => __awaiter(void 0, void 0, void 0, fun
         const { newSubjectName } = req.body;
         if (!userId) {
             res.status(401).json({
-                "success": false,
-                "message": 'authenticated user id not found'
+                success: false,
+                message: "authenticated user id not found",
             });
             return;
         }
         const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
         if (!user) {
             res.status(400).json({
-                "success": false,
-                "message": "invalid user id"
+                success: false,
+                message: "invalid user id",
             });
             return;
         }
         if (newSubjectName.trim() === "") {
             res.status(400).json({
-                "success": false,
-                "message": "subject name cannot be empty"
+                success: false,
+                message: "subject name cannot be empty",
             });
             return;
         }
-        const subject = yield __1.prisma.subject.findUnique({ where: { id: subjectId } });
+        const subject = yield __1.prisma.subject.findUnique({
+            where: { id: subjectId },
+        });
         if (!subject) {
             res.status(400).json({
-                "success": false,
-                "message": "subject not found"
+                success: false,
+                message: "subject not found",
             });
             return;
         }
-        // subject to update available 
+        // subject to update available
         if (user.role === "STUDENT") {
             res.status(400).json({
-                "success": false,
-                "message": "student not authorized to update subject"
+                success: false,
+                message: "student not authorized to update subject",
             });
             return;
         }
         if (user.role === "TEACHER") {
             // If teacher teaches the grade that the subject is in then it is ok if not then return err
-            const teachesGrade = yield __1.prisma.teacherGrade.findFirst({ where: { teacherId: user.id, gradeId: subject.gradeId } });
+            const teachesGrade = yield __1.prisma.teacherGrade.findFirst({
+                where: { teacherId: user.id, gradeId: subject.gradeId },
+            });
             if (!teachesGrade) {
                 res.status(401).json({
-                    "success": false,
-                    "message": "teacher not allowed to update subject of this grade"
+                    success: false,
+                    message: "teacher not allowed to update subject of this grade",
                 });
                 return;
             }
         }
-        const updatedSubject = yield __1.prisma.subject.update({ where: { id: subject.id }, data: { subjectName: newSubjectName.trim() } });
+        const updatedSubject = yield __1.prisma.subject.update({
+            where: { id: subject.id },
+            data: { subjectName: newSubjectName.trim() },
+        });
         res.status(200).json({
-            "success": true,
-            "message": "subject updated successfully",
-            "subject": updatedSubject,
+            success: true,
+            message: "subject updated successfully",
+            subject: updatedSubject,
         });
     }
     catch (error) {
         console.log(error);
         res.status(500).json({
-            "success": false,
-            "message": "Internal server error when updating subject"
+            success: false,
+            message: "Internal server error when updating subject",
         });
     }
 });
@@ -282,21 +318,23 @@ exports.updateSubjectHandler = updateSubjectHandler;
 const getSubjectById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { subjectId } = req.params;
-        const subject = yield __1.prisma.subject.findUnique({ where: { id: subjectId } });
+        const subject = yield __1.prisma.subject.findUnique({
+            where: { id: subjectId },
+        });
         if (!subject) {
             res.status(400).json({
-                "success": false,
-                "message": "subject not found"
+                success: false,
+                message: "subject not found",
             });
             return;
         }
-        res.status(200).json({ "success": true, subject });
+        res.status(200).json({ success: true, subject });
     }
     catch (error) {
         console.log(error);
         res.status(500).json({
-            "success": false,
-            "message": "internal server error when getting subject"
+            success: false,
+            message: "internal server error when getting subject",
         });
     }
 });

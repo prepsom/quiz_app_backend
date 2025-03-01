@@ -22,13 +22,13 @@ model School {
 }
 
 model Grade {
-  id           String         @id @default(uuid())
-  grade        Int
-  students     User[]         @relation("StudentGrade")
-  TeacherGrade TeacherGrade[]
-  Subjects     Subject[]
-  school       School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  schoolId     String
+  id            String         @id @default(uuid())
+  grade         Int
+  students      User[]         @relation("StudentGrade")
+  TeacherGrade  TeacherGrade[]
+  Subjects      Subject[]
+  school        School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolId      String
   Notifications Notification[]
 }
 
@@ -55,10 +55,10 @@ model User {
 }
 
 model Notification {
-  id      String @id @default(uuid())
-  message String
-  grade   Grade  @relation(fields: [gradeId], references: [id])
-  gradeId String
+  id        String   @id @default(uuid())
+  message   String
+  grade     Grade    @relation(fields: [gradeId], references: [id])
+  gradeId   String
   createdAt DateTime @default(now())
 }
 
@@ -82,6 +82,7 @@ model TeacherGrade {
 model Subject {
   id          String  @id @default(uuid())
   subjectName String
+  position    Int     @default(0)
   grade       Grade   @relation(fields: [gradeId], references: [id], onDelete: Cascade)
   gradeId     String
   Levels      Level[]
