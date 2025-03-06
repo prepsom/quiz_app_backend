@@ -52,6 +52,32 @@ model User {
   lastLogin           DateTime?
   hashedToken         String?
   tokenExpirationDate DateTime?
+  UserChats           Chat[]              @relation("user")
+  BotChats            Chat[]              @relation("bot")
+  MessagesSent        Message[]           @relation("sender")
+  MessagesReceived    Message[]           @relation("reciever")
+}
+
+model Chat {
+  id      String    @id @default(uuid())
+  title   String
+  userId  String
+  user    User      @relation("user", fields: [userId], references: [id])
+  botId   String
+  bot     User      @relation("bot", fields: [botId], references: [id])
+  Message Message[]
+}
+
+model Message {
+  id                String   @id @default(uuid())
+  messageText       String
+  messageSenderId   String
+  messageSender     User     @relation("sender", fields: [messageSenderId], references: [id])
+  messageReceiverId String
+  messageReceiver   User     @relation("reciever", fields: [messageReceiverId], references: [id])
+  chatId            String
+  chat              Chat     @relation(fields: [chatId], references: [id])
+  messageCreatedAt  DateTime @default(now())
 }
 
 model Notification {

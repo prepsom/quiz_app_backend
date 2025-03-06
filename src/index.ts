@@ -12,7 +12,8 @@ import questionResponseRoutes from "./routes/questionResponse.route";
 import userRoutes from "./routes/user.route";
 import schoolRoutes from "./routes/school.route";
 import gradeRoutes from "./routes/grade.route";
-import notificationRoutes from "./routes/notification.route"
+import notificationRoutes from "./routes/notification.route";
+import chatRoutes from "./routes/chat.route";
 import OpenAI from "openai";
 import https from "https";
 import fs from "fs";
@@ -21,7 +22,7 @@ import http from "http";
 const app = express();
 const port = process.env.PORT;
 
-// instantiating a new prisma client
+// instantiating a new prisma clients
 export const prisma = new PrismaClient();
 export const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -52,8 +53,9 @@ app.use("/answer", answerRoutes);
 app.use("/question-response", questionResponseRoutes);
 app.use("/user", userRoutes);
 app.use("/school", schoolRoutes);
-app.use("/grade",gradeRoutes);
-app.use("/notification",notificationRoutes);
+app.use("/grade", gradeRoutes);
+app.use("/notification", notificationRoutes);
+app.use("/chat", chatRoutes);
 
 // Check if SSL certificates exist
 const sslEnabled = () => {
