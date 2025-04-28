@@ -33,7 +33,11 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(
   cors({
-    origin: process.env.CLIENT_URL,
+    origin: process.env.CLIENT_URL
+    ? process.env.CLIENT_URL // Use the value of CLIENT_URL if it's provided
+    : (origin, callback) => {
+        callback(null, true); // Allow all domains if CLIENT_URL is not set
+      },
     credentials: true,
   })
 );

@@ -44,7 +44,11 @@ exports.openai = new openai_1.default({
 app.use(express_1.default.json());
 app.use((0, cookie_parser_1.default)());
 app.use((0, cors_1.default)({
-    origin: process.env.CLIENT_URL,
+    origin: process.env.CLIENT_URL
+        ? process.env.CLIENT_URL // Use the value of CLIENT_URL if it's provided
+        : (origin, callback) => {
+            callback(null, true); // Allow all domains if CLIENT_URL is not set
+        },
     credentials: true,
 }));
 app.get("/test", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
