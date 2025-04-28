@@ -4,6 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "watch": "nodemon src/index.ts",
+    "build": "npx tsc",
+    "dev": "npx tsc && node dist/index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "initialize-db": "node ./dist/scripts/dbInit.js",
     "create-school-add-grades": "node ./dist/scripts/createSchoolAndAddGrades.js",
@@ -12,7 +15,7 @@
     "create-levels-in-subject": "node ./dist/scripts/createLevelsInSubject.js",
     "create-questions-in-level": "node ./dist/scripts/createQuestionsInLevel.js",
     "create-admin-user": "node ./dist/scripts/createAdminUser.js",
-    "create-teacher-user":"node ./dist/scripts/createTeacherUser.js"
+    "create-teacher-user": "node ./dist/scripts/createTeacherUser.js"
   },
   "keywords": [],
   "author": "",
@@ -41,6 +44,7 @@
     "@types/nodemailer": "^6.4.17",
     "nodemon": "^3.1.9",
     "prisma": "^6.1.0",
-    "typescript": "^5.7.3"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
   }
 }
