@@ -1,23 +1,23 @@
-import "dotenv/config";
-import express, { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import authRoutes from "./routes/auth.routes";
-import subjectRoutes from "./routes/subject.routes";
-import levelRoutes from "./routes/level.routes";
-import questionRoutes from "./routes/question.routes";
-import answerRoutes from "./routes/answer.route";
-import questionResponseRoutes from "./routes/questionResponse.route";
-import userRoutes from "./routes/user.route";
-import schoolRoutes from "./routes/school.route";
-import gradeRoutes from "./routes/grade.route";
-import notificationRoutes from "./routes/notification.route";
-import chatRoutes from "./routes/chat.route";
-import OpenAI from "openai";
-import https from "https";
+import "dotenv/config";
+import express, { Request, Response } from "express";
 import fs from "fs";
 import http from "http";
+import https from "https";
+import OpenAI from "openai";
+import answerRoutes from "./routes/answer.route";
+import authRoutes from "./routes/auth.routes";
+import chatRoutes from "./routes/chat.route";
+import gradeRoutes from "./routes/grade.route";
+import levelRoutes from "./routes/level.routes";
+import notificationRoutes from "./routes/notification.route";
+import questionRoutes from "./routes/question.routes";
+import questionResponseRoutes from "./routes/questionResponse.route";
+import schoolRoutes from "./routes/school.route";
+import subjectRoutes from "./routes/subject.routes";
+import userRoutes from "./routes/user.route";
 
 const app = express();
 const port = process.env.PORT;
@@ -78,11 +78,15 @@ const options = sslEnabled();
 if (options) {
   // Create HTTPS server if SSL certificates exist
   https.createServer(options, app).listen(port, () => {
-    console.log(`Secure server is running on https://localhost:${port}`);
+    if (process.env.NODE_ENV != "production") {
+      console.log(`Secure server is running on https://localhost:${port}`);
+    }
   });
 } else {
   // Fallback to HTTP server if no SSL certificates
   http.createServer(app).listen(port, () => {
-    console.log(`Server is running on http://localhost:${port}`);
+    if (process.env.NODE_ENV != "production") {
+      console.log(`Server is running on http://localhost:${port}`);
+    }
   });
 }

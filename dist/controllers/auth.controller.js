@@ -90,7 +90,7 @@ const registerUserHandler = (req, res) => __awaiter(void 0, void 0, void 0, func
     //
     try {
         console.log("registering");
-        const { email, grade, name, password, phoneNumber, schoolName, schoolId } = req.body;
+        const { email, grade, name, password, phoneNumber, avatar, schoolName, schoolId } = req.body;
         const school = yield __1.prisma.school.findUnique({
             where: { id: schoolId },
         });
@@ -124,10 +124,12 @@ const registerUserHandler = (req, res) => __awaiter(void 0, void 0, void 0, func
         }
         const saltRounds = yield bcrypt_1.default.genSalt(10);
         const hashedPassword = yield bcrypt_1.default.hash(password.trim(), saltRounds);
+        const gender = avatar === "MALE" ? "MALE" : "FEMALE";
         const newUser = yield __1.prisma.user.create({
             data: {
                 email: email.trim().toLowerCase(),
                 name: name,
+                avatar: gender,
                 password: hashedPassword,
                 gradeId: gradeId,
                 role: "STUDENT",

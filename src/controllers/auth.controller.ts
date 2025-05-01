@@ -12,6 +12,7 @@ type RegisterRequestBody = {
   email: string;
   password: string;
   name: string;
+  avatar: string; // default avatar for the user
   grade: number;
   schoolName: string; // extra user data just for default schools
   phoneNumber: number; // extra user data
@@ -103,7 +104,7 @@ const registerUserHandler = async (req: Request, res: Response) => {
   //
   try {
     console.log("registering");
-    const { email, grade, name, password, phoneNumber, schoolName, schoolId } =
+    const { email, grade, name, password, phoneNumber, avatar, schoolName, schoolId } =
       req.body as RegisterRequestBody;
 
     const school = await prisma.school.findUnique({
@@ -144,10 +145,13 @@ const registerUserHandler = async (req: Request, res: Response) => {
     const saltRounds = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password.trim(), saltRounds);
 
+    const gender = avatar === "MALE" ? "MALE" : "FEMALE";
+
     const newUser = await prisma.user.create({
       data: {
         email: email.trim().toLowerCase(),
         name: name,
+        avatar: gender,
         password: hashedPassword,
         gradeId: gradeId,
         role: "STUDENT",
