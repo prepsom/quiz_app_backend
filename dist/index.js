@@ -13,26 +13,26 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.openai = exports.prisma = void 0;
-require("dotenv/config");
-const express_1 = __importDefault(require("express"));
 const client_1 = require("@prisma/client");
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const cors_1 = __importDefault(require("cors"));
-const auth_routes_1 = __importDefault(require("./routes/auth.routes"));
-const subject_routes_1 = __importDefault(require("./routes/subject.routes"));
-const level_routes_1 = __importDefault(require("./routes/level.routes"));
-const question_routes_1 = __importDefault(require("./routes/question.routes"));
-const answer_route_1 = __importDefault(require("./routes/answer.route"));
-const questionResponse_route_1 = __importDefault(require("./routes/questionResponse.route"));
-const user_route_1 = __importDefault(require("./routes/user.route"));
-const school_route_1 = __importDefault(require("./routes/school.route"));
-const grade_route_1 = __importDefault(require("./routes/grade.route"));
-const notification_route_1 = __importDefault(require("./routes/notification.route"));
-const chat_route_1 = __importDefault(require("./routes/chat.route"));
-const openai_1 = __importDefault(require("openai"));
-const https_1 = __importDefault(require("https"));
+require("dotenv/config");
+const express_1 = __importDefault(require("express"));
 const fs_1 = __importDefault(require("fs"));
 const http_1 = __importDefault(require("http"));
+const https_1 = __importDefault(require("https"));
+const openai_1 = __importDefault(require("openai"));
+const answer_route_1 = __importDefault(require("./routes/answer.route"));
+const auth_routes_1 = __importDefault(require("./routes/auth.routes"));
+const chat_route_1 = __importDefault(require("./routes/chat.route"));
+const grade_route_1 = __importDefault(require("./routes/grade.route"));
+const level_routes_1 = __importDefault(require("./routes/level.routes"));
+const notification_route_1 = __importDefault(require("./routes/notification.route"));
+const question_routes_1 = __importDefault(require("./routes/question.routes"));
+const questionResponse_route_1 = __importDefault(require("./routes/questionResponse.route"));
+const school_route_1 = __importDefault(require("./routes/school.route"));
+const subject_routes_1 = __importDefault(require("./routes/subject.routes"));
+const user_route_1 = __importDefault(require("./routes/user.route"));
 const app = (0, express_1.default)();
 const port = process.env.PORT;
 // instantiating a new prisma clients
@@ -84,12 +84,16 @@ const options = sslEnabled();
 if (options) {
     // Create HTTPS server if SSL certificates exist
     https_1.default.createServer(options, app).listen(port, () => {
-        console.log(`Secure server is running on https://localhost:${port}`);
+        if (process.env.NODE_ENV != "production") {
+            console.log(`Secure server is running on https://localhost:${port}`);
+        }
     });
 }
 else {
     // Fallback to HTTP server if no SSL certificates
     http_1.default.createServer(app).listen(port, () => {
-        console.log(`Server is running on http://localhost:${port}`);
+        if (process.env.NODE_ENV != "production") {
+            console.log(`Server is running on http://localhost:${port}`);
+        }
     });
 }
