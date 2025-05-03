@@ -35,6 +35,16 @@ function parseMCQOption(option: string): string {
   return option.replace(/^[a-zA-Z][.)]\s*/, "").trim();
 }
 
+function splitOptions(optionStr: string): string[] {
+  // This splits on 'a)', 'b)', 'c)', 'd)' using lookahead to keep the marker
+  const parts = optionStr
+    .split(/(?=[a-dA-D][).])/)
+    .map((opt) => opt.trim())
+    .filter(Boolean);
+
+  return parts;
+}
+
 function parseQuestionsCsv(filePath: string) {
   const fileContent = fs.readFileSync(filePath, "utf-8");
   const records = parse(fileContent, {
@@ -49,67 +59,85 @@ function parseQuestionsCsv(filePath: string) {
 
   for (let i = 0; i < records.length; i++) {
     const row = records[i];
+    row["Question Type"] = 'MCQ';
 
-    if (row.Difficulty && row["Question Type"] && row.Question) {
-      if (currentQuestion) {
-        questions.push(
-          processQuestion(currentQuestion, currentOptions, currentMatches)
-        );
-        currentOptions = [];
-        currentMatches = [];
-      }
-
-      if (row["Question Type"] === "True/False") {
-        currentQuestion = null;
-        continue;
-      }
-
-      if (row["Question Type"] === "Diagram-Based") {
-        currentQuestion = null;
-        continue;
-      }
-      currentQuestion = {
-        difficulty: row.Difficulty.toUpperCase() as Difficulty,
-        questionType: mapQuestionType(row["Question Type"]),
-        questionTitle: row.Question,
-        explanation: row.Explanation || "",
-        answer: row.Answer,
-        isFirstRow: true,
-      };
-
-      console.log(currentQuestion.answer);
-
-      if (row.Options && row.Options !== "-") {
-        if (currentQuestion.questionType === "MCQ") {
-          currentOptions.push(row.Options);
-        } else if (currentQuestion.questionType === "MATCHING") {
-          try {
-            const [left, right] = parseMatchingRow(row.Options);
-            currentMatches.push([left, right]);
-          } catch (error) {
-            console.error(`Error parsing matching row: ${row.Options}`, error);
-          }
+    if (row.Level && row["Question Type"] && row.Question && row.Options) {
+      if (row["Question Type"] === "MCQ") {
+        if (row.Level.trim() == "Difficult") {
+          row.Level = "hard";
         }
-      }
-    } else if (currentQuestion && row.Options) {
-      if (currentQuestion.questionType === "MCQ") {
-        currentOptions.push(row.Options);
-      } else if (currentQuestion.questionType === "MATCHING") {
-        try {
-          const [left, right] = parseMatchingRow(row.Options);
-          currentMatches.push([left, right]);
-        } catch (error) {
-          console.error(`Error parsing matching row: ${row.Options}`, error);
+        currentQuestion = {
+          difficulty: row.Level.trim().toUpperCase() as Difficulty,
+          questionType: mapQuestionType(row["Question Type"]),
+          questionTitle: row.Question,
+          explanation: row.Explanation || "",
+          answer: row.Answer,
+          isFirstRow: true,
+        };
+        currentOptions.push(...splitOptions(row.Options));
+
+        if (currentQuestion) {
+          questions.push(
+            processQuestion(currentQuestion, currentOptions, currentMatches)
+          );
+          currentOptions = [];
+          currentMatches = [];
         }
       }
     }
   }
 
-  if (currentQuestion) {
-    questions.push(
-      processQuestion(currentQuestion, currentOptions, currentMatches)
-    );
-  }
+  //     if (row["Question Type"] === "True/False") {
+  //       currentQuestion = null;
+  //       continue;
+  //     }
+
+  //     if (row["Question Type"] === "Diagram-Based") {
+  //       currentQuestion = null;
+  //       continue;
+  //     }
+  //     currentQuestion = {
+  //       difficulty: row.Level.toUpperCase() as Difficulty,
+  //       questionType: mapQuestionType(row["Question Type"]),
+  //       questionTitle: row.Question,
+  //       explanation: row.Explanation || "",
+  //       answer: row.Answer,
+  //       isFirstRow: true,
+  //     };
+
+  //     console.log(currentQuestion.answer);
+
+  //     if (row.Options && row.Options !== "-") {
+  //       if (currentQuestion.questionType === "MCQ") {
+  //         currentOptions.push(row.Options);
+  //       } else if (currentQuestion.questionType === "MATCHING") {
+  //         try {
+  //           const [left, right] = parseMatchingRow(row.Options);
+  //           currentMatches.push([left, right]);
+  //         } catch (error) {
+  //           console.error(`Error parsing matching row: ${row.Options}`, error);
+  //         }
+  //       }
+  //     }
+  //   } else if (currentQuestion && row.Options) {
+  //     if (currentQuestion.questionType === "MCQ") {
+  //       currentOptions.push(row.Options);
+  //     } else if (currentQuestion.questionType === "MATCHING") {
+  //       try {
+  //         const [left, right] = parseMatchingRow(row.Options);
+  //         currentMatches.push([left, right]);
+  //       } catch (error) {
+  //         console.error(`Error parsing matching row: ${row.Options}`, error);
+  //       }
+  //     }
+  //   }
+  // }
+
+  // if (currentQuestion) {
+  //   questions.push(
+  //     processQuestion(currentQuestion, currentOptions, currentMatches)
+  //   );
+  // }
 
   return transformToExampleData(questions);
 }
