@@ -86,8 +86,13 @@ const validateReadyField = (requestData: AddQuestionRequestBody): boolean => {
   return false; // Default to not ready for unrecognized question types
 };
 
-const createQuestionsInLevel = async (levelId: string, csvPath: string) => {
+const createQuestionsInLevel = async (levelId: string, csvPath: string, clearExisting: string = "false") => {
   try {
+    if (clearExisting === 'true') {
+      console.log("Deleting questions for levelId:", levelId);
+      await prisma.question.deleteMany({ where: { levelId: levelId } });
+    }
+
     const level = await prisma.level.findUnique({ where: { id: levelId } , include:{
       subject:true,
     }});
@@ -177,62 +182,62 @@ const createQuestionsInLevel = async (levelId: string, csvPath: string) => {
           break;
         case "FILL_IN_BLANK":
           // create fill in blank question in db
-          await prisma.question.create({
-            data: {
-              questionTitle: question.questionTitle,
-              explanation: question.explanation,
-              difficulty: question.difficulty,
-              levelId: level.id,
-              questionType: question.questionType,
-              ready: isReady,
-              BlankSegments: {
-                createMany: {
-                  data: question.segments,
-                },
-              },
-              BlankAnswers: {
-                createMany: {
-                  data: question.answers,
-                },
-              },
-            },
-          });
+          // await prisma.question.create({
+          //   data: {
+          //     questionTitle: question.questionTitle,
+          //     explanation: question.explanation,
+          //     difficulty: question.difficulty,
+          //     levelId: level.id,
+          //     questionType: question.questionType,
+          //     ready: isReady,
+          //     BlankSegments: {
+          //       createMany: {
+          //         data: question.segments,
+          //       },
+          //     },
+          //     BlankAnswers: {
+          //       createMany: {
+          //         data: question.answers,
+          //       },
+          //     },
+          //   },
+          // });
           console.log(`${question.questionType} question created`);
           break;
         case "MATCHING":
           //create matching question in db
 
-          await prisma.question.create({
-            data: {
-              questionTitle: question.questionTitle,
-              explanation: question.explanation,
-              questionType: question.questionType,
-              levelId: level.id,
-              difficulty: question.difficulty,
-              ready: isReady,
-              MatchingPairs: {
-                createMany: {
-                  data: question.pairs.map((pair, index) => {
-                    return {
-                      leftItem: pair.leftItem,
-                      rightItem: pair.rightItem,
-                      order: index,
-                    };
-                  }),
-                },
-              },
-            },
-          });
+          // await prisma.question.create({
+          //   data: {
+          //     questionTitle: question.questionTitle,
+          //     explanation: question.explanation,
+          //     questionType: question.questionType,
+          //     levelId: level.id,
+          //     difficulty: question.difficulty,
+          //     ready: isReady,
+          //     MatchingPairs: {
+          //       createMany: {
+          //         data: question.pairs.map((pair, index) => {
+          //           return {
+          //             leftItem: pair.leftItem,
+          //             rightItem: pair.rightItem,
+          //             order: index,
+          //           };
+          //         }),
+          //       },
+          //     },
+          //   },
+          // });
           console.log(`${question.questionType} question created`);
           break;
       }
     }
-    await prisma.notification.create({
-      data:{
-        gradeId:level.subject.gradeId,
-        message:`${questionsData.length} questions added in level ${level.levelName}`
-      }
-    })
+    // await prisma.notification.create({
+    //   data:{
+    //     gradeId:level.subject.gradeId,
+    //     message:`${questionsData.length} questions added in level ${level.levelName}`
+    //   }
+    // })
   } catch (error) {
     console.log(error);
     throw new Error("Failed to add questions in level");
@@ -240,7 +245,7 @@ const createQuestionsInLevel = async (levelId: string, csvPath: string) => {
 };
 
 // process.argv[2] being the command line argument for a particular level
-createQuestionsInLevel(process.argv[2], process.argv[3])
+createQuestionsInLevel(process.argv[2], process.argv[3], process.argv[4])
   .then(() => {
     console.log("Successfully added questions in level");
   })
