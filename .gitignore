@@ -5,3 +5,4 @@ public
 certs
 deploy_backend_dev.sh
 .vscode
+**/*.csv
